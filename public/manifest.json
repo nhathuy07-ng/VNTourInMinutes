@@ -1,0 +1,21 @@
+{
+  "name": "VNTourInMinutes",
+  "short_name": "VNTour",
+  "description": "Plan your single-day tour in Vietnamese cities in minutes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "icons": [
+    {
+      "src": "/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
