@@ -122,10 +122,18 @@ export default function NewItinerary() {
     newItems[editingStayTimeIdx] = { ...newItems[editingStayTimeIdx], suggested_stay_time_secs: newStaySecs };
     
     for (let i = editingStayTimeIdx; i < newItems.length; i++) {
+      if (!newItems[i].start_time || !newItems[i].end_time) {
+        continue;
+      }
       if (i === editingStayTimeIdx) {
         const start = new Date(newItems[i].start_time).getTime();
-        newItems[i] = { ...newItems[i], end_time: new Date(start + newStaySecs * 1000).toISOString() };
+        if (!isNaN(start)) {
+          newItems[i] = { ...newItems[i], end_time: new Date(start + newStaySecs * 1000).toISOString() };
+        }
       } else {
+        if (!itineraryItems[i - 1]?.end_time || !itineraryItems[i]?.start_time || !newItems[i - 1]?.end_time) {
+          continue;
+        }
         const prevOldEndTime = new Date(itineraryItems[i - 1].end_time).getTime();
         const thisOldStartTime = new Date(itineraryItems[i].start_time).getTime();
         const travelSecs = Math.max(0, (thisOldStartTime - prevOldEndTime) / 1000);
@@ -133,11 +141,13 @@ export default function NewItinerary() {
         const prevNewEndTime = new Date(newItems[i - 1].end_time).getTime();
         const staySecs = newItems[i].suggested_stay_time_secs || 3600;
         
-        newItems[i] = { 
-          ...newItems[i], 
-          start_time: new Date(prevNewEndTime + travelSecs * 1000).toISOString(),
-          end_time: new Date(prevNewEndTime + travelSecs * 1000 + staySecs * 1000).toISOString()
-        };
+        if (!isNaN(prevNewEndTime) && !isNaN(travelSecs)) {
+          newItems[i] = { 
+            ...newItems[i], 
+            start_time: new Date(prevNewEndTime + travelSecs * 1000).toISOString(),
+            end_time: new Date(prevNewEndTime + travelSecs * 1000 + staySecs * 1000).toISOString()
+          };
+        }
       }
     }
     
@@ -705,9 +715,9 @@ export default function NewItinerary() {
                 <button
                   onClick={handleCalculateRoutes}
                   disabled={!hasUncalculatedChanges || itineraryItems.length < 2 || isCalculating}
-                  className="flex-1 py-3 bg-neutral-100 text-neutral-900 rounded-md font-medium disabled:opacity-50 hover:bg-neutral-200 transition-colors"
+                  className={`flex-1 py-3 rounded-md font-medium disabled:opacity-50 transition-all ${hasUncalculatedChanges && itineraryItems.length >= 2 ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-2 ring-blue-400 hover:bg-blue-100" : "bg-neutral-100 text-neutral-900 hover:bg-neutral-200"}`}
                 >
-                  {isCalculating ? "Calculating..." : "Recalculate Routes"}
+                  {isCalculating ? "Calculating..." : "Recalculate Itinerary"}
                 </button>
                 <button
                   onClick={handleSaveTourClick}
