@@ -25,7 +25,7 @@ export default function NewItinerary() {
   const router = useRouter();
   const { addItinerary } = useStore();
   const [step, setStep] = useState(1);
-  const [city, setCity] = useState("hanoi");
+  const [city, setCity] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("08:00");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -360,36 +360,40 @@ export default function NewItinerary() {
           <h1 className="ml-2 font-extrabold tracking-tight text-lg">New Tour</h1>
         </header>
 
-        <main className="p-6 space-y-8 max-w-2xl mx-auto">
-          <div className="space-y-4">
-            <div className="flex justify-between items-center">
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Destination</label>
+        <main className="p-6 space-y-6 max-w-2xl mx-auto">
+          {/* Section 1: Destination */}
+          <div className={`relative z-50 p-5 rounded-xl border transition-all duration-500 ${!city ? 'border-neutral-300 shadow-[0_0_20px_rgba(156,163,175,0.4)] ring-2 ring-neutral-100 bg-white scale-[1.01]' : 'border-neutral-200 bg-neutral-50/50 opacity-80 hover:opacity-100'}`}>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${!city ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-500'}`}>1</div>
+                <h3 className="text-base font-bold">Destination</h3>
+              </div>
               <button 
                 onClick={() => setShowCityInfoPopup(true)} 
-                className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-1 bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors"
               >
                 <Info size={14} /> ABOUT CITIES
               </button>
             </div>
             
             <div className="relative" ref={cityDropdownRef}>
-              <MapPin className="absolute left-4 top-3.5 text-neutral-400" size={20} />
+              <MapPin className="absolute left-4 top-3.5 text-neutral-400" size={18} />
               <div 
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 pl-12 pr-4 text-lg font-medium cursor-pointer"
+                className="w-full bg-white border border-neutral-200 rounded-lg py-3 pl-12 pr-4 text-base font-medium cursor-pointer hover:border-neutral-300 transition-colors"
                 onClick={() => setIsCityDropdownOpen(true)}
               >
-                {VIETNAM_CITIES.find(c => c.id === city)?.name_en || "Select a city"}
+                {VIETNAM_CITIES.find(c => c.id === city)?.name_en || <span className="text-neutral-400">Select a city</span>}
               </div>
               
               {isCityDropdownOpen && (
-                <div className="absolute z-20 w-full mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-60 flex flex-col overflow-hidden">
+                <div className="absolute z-20 w-full mt-2 bg-white border border-neutral-200 rounded-lg shadow-xl max-h-60 flex flex-col overflow-hidden">
                   <div className="p-2 border-b border-neutral-100 shrink-0">
                      <input 
                        type="text" 
                        placeholder="Search city..." 
                        value={citySearchQuery}
                        onChange={(e) => setCitySearchQuery(e.target.value)}
-                       className="w-full bg-neutral-100 px-3 py-2 rounded text-sm focus:outline-none"
+                       className="w-full bg-neutral-100 px-3 py-2 rounded-md text-sm focus:outline-none"
                        autoFocus
                      />
                   </div>
@@ -400,21 +404,21 @@ export default function NewItinerary() {
                     ).map(c => (
                       <div 
                         key={c.id} 
-                        className="px-4 py-2 hover:bg-neutral-100 cursor-pointer text-sm"
+                        className="px-4 py-3 hover:bg-neutral-50 cursor-pointer text-sm border-b border-neutral-50 last:border-0"
                         onClick={() => {
                            setCity(c.id);
                            setIsCityDropdownOpen(false);
                            setCitySearchQuery("");
                         }}
                       >
-                        <span className="font-medium">{c.name_en}</span> <span className="text-neutral-500 text-xs">({c.name_vi})</span>
+                        <span className="font-semibold">{c.name_en}</span> <span className="text-neutral-500 text-xs ml-1">({c.name_vi})</span>
                       </div>
                     ))}
                     {VIETNAM_CITIES.filter(c => 
                        c.name_en.toLowerCase().includes(citySearchQuery.toLowerCase()) || 
                        c.name_vi.toLowerCase().includes(citySearchQuery.toLowerCase())
                     ).length === 0 && (
-                      <div className="px-4 py-3 text-sm text-neutral-500 text-center">No city found</div>
+                      <div className="px-4 py-4 text-sm text-neutral-500 text-center">No city found</div>
                     )}
                   </div>
                 </div>
@@ -422,64 +426,80 @@ export default function NewItinerary() {
             </div>
           </div>
 
-          <div className="space-y-4">
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Date</label>
+          {/* Section 2: Date */}
+          <div className={`p-5 rounded-xl border transition-all duration-500 ${city && !date ? 'border-neutral-300 shadow-[0_0_20px_rgba(156,163,175,0.4)] ring-2 ring-neutral-100 bg-white scale-[1.01]' : 'border-neutral-200 bg-neutral-50/50 opacity-80 hover:opacity-100'}`}>
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${city && !date ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-500'}`}>2</div>
+              <h3 className="text-base font-bold">Date</h3>
+            </div>
             <input 
               type="date"
               value={date}
               onChange={(e) => setDate(e.target.value)}
-              className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 px-4 text-lg font-medium focus:outline-none focus:border-neutral-300"
+              className="w-full bg-white border border-neutral-200 rounded-lg py-3 px-4 text-base font-medium focus:outline-none focus:border-neutral-400 hover:border-neutral-300 transition-colors"
             />
           </div>
 
-          <div className="space-y-4">
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Interests</label>
-            <div className="flex flex-wrap gap-2">
-              {CATEGORIES.map(cat => (
-                <button
-                  key={cat.id}
-                  onClick={() => {
-                    if (selectedCategories.includes(cat.id)) {
-                      setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
-                    } else {
-                      setSelectedCategories([...selectedCategories, cat.id]);
-                    }
-                  }}
-                  className={`px-3 py-2 rounded-md text-sm font-medium border transition-colors ${
-                    selectedCategories.includes(cat.id) 
-                      ? "border-black bg-black text-white" 
-                      : "border-neutral-200 text-neutral-600 bg-neutral-50 hover:bg-neutral-100"
-                  }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
+          {/* Section 3: Interests & Preferences */}
+          <div className={`p-5 rounded-xl border transition-all duration-500 ${city && date && selectedCategories.length === 0 ? 'border-neutral-300 shadow-[0_0_20px_rgba(156,163,175,0.4)] ring-2 ring-neutral-100 bg-white scale-[1.01]' : 'border-neutral-200 bg-neutral-50/50 opacity-80 hover:opacity-100'}`}>
+            <div className="flex items-center gap-3 mb-6">
+              <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${city && date && selectedCategories.length === 0 ? 'bg-black text-white' : 'bg-neutral-200 text-neutral-500'}`}>3</div>
+              <h3 className="text-base font-bold">Interests & Details</h3>
             </div>
-          </div>
+            
+            <div className="space-y-6">
+              <div>
+                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Activities</label>
+                <div className="flex flex-wrap gap-2">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat.id}
+                      onClick={() => {
+                        if (selectedCategories.includes(cat.id)) {
+                          setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
+                        } else {
+                          setSelectedCategories([...selectedCategories, cat.id]);
+                        }
+                      }}
+                      className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                        selectedCategories.includes(cat.id) 
+                          ? "border-black bg-black text-white shadow-sm" 
+                          : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                      }`}
+                    >
+                      {cat.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          <div className="space-y-4 pt-4 border-t border-neutral-100">
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Preferences</label>
-            <label className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-100 transition-colors">
-              <div className={`w-5 h-5 rounded flex items-center justify-center ${prefChildrenFriendly ? 'bg-black' : 'border border-neutral-300 bg-white'}`}>
-                {prefChildrenFriendly && <Check size={14} className="text-white" />}
+              <div className="pt-4 border-t border-neutral-100">
+                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Preferences</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center ${prefChildrenFriendly ? 'bg-black border-black' : 'border-2 border-neutral-300'}`}>
+                      {prefChildrenFriendly && <Check size={14} className="text-white" />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={prefChildrenFriendly} onChange={() => setPrefChildrenFriendly(!prefChildrenFriendly)} />
+                    <span className="font-semibold text-sm text-neutral-800">Child-friendly</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center ${prefAccessible ? 'bg-black border-black' : 'border-2 border-neutral-300'}`}>
+                      {prefAccessible && <Check size={14} className="text-white" />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={prefAccessible} onChange={() => setPrefAccessible(!prefAccessible)} />
+                    <span className="font-semibold text-sm text-neutral-800">Accessible</span>
+                  </label>
+                  <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors sm:col-span-2">
+                    <div className={`w-5 h-5 rounded flex items-center justify-center ${prefLesserKnown ? 'bg-black border-black' : 'border-2 border-neutral-300'}`}>
+                      {prefLesserKnown && <Check size={14} className="text-white" />}
+                    </div>
+                    <input type="checkbox" className="hidden" checked={prefLesserKnown} onChange={() => setPrefLesserKnown(!prefLesserKnown)} />
+                    <span className="font-semibold text-sm text-neutral-800">Lesser known places</span>
+                  </label>
+                </div>
               </div>
-              <input type="checkbox" className="hidden" checked={prefChildrenFriendly} onChange={() => setPrefChildrenFriendly(!prefChildrenFriendly)} />
-              <span className="font-semibold text-neutral-800">Child-friendly venues</span>
-            </label>
-            <label className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-100 transition-colors">
-              <div className={`w-5 h-5 rounded flex items-center justify-center ${prefAccessible ? 'bg-black' : 'border border-neutral-300 bg-white'}`}>
-                {prefAccessible && <Check size={14} className="text-white" />}
-              </div>
-              <input type="checkbox" className="hidden" checked={prefAccessible} onChange={() => setPrefAccessible(!prefAccessible)} />
-              <span className="font-semibold text-neutral-800">Wheelchair accessible</span>
-            </label>
-            <label className="flex items-center gap-3 p-4 bg-neutral-50 border border-neutral-200 rounded-xl cursor-pointer hover:bg-neutral-100 transition-colors">
-              <div className={`w-5 h-5 rounded flex items-center justify-center ${prefLesserKnown ? 'bg-black' : 'border border-neutral-300 bg-white'}`}>
-                {prefLesserKnown && <Check size={14} className="text-white" />}
-              </div>
-              <input type="checkbox" className="hidden" checked={prefLesserKnown} onChange={() => setPrefLesserKnown(!prefLesserKnown)} />
-              <span className="font-semibold text-neutral-800">Lesser known places</span>
-            </label>
+            </div>
           </div>
         </main>
 
@@ -492,7 +512,7 @@ export default function NewItinerary() {
             )}
             <button
               onClick={handleNext}
-              disabled={!date || selectedCategories.length === 0 || isLoading}
+              disabled={!city || !date || selectedCategories.length === 0 || isLoading}
               className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg disabled:opacity-50 flex justify-center items-center gap-2 hover:bg-neutral-800 transition-colors"
             >
               {isLoading ? (
