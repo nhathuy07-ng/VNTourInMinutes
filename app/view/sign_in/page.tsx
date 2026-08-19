@@ -9,18 +9,16 @@ import { MapPin } from "lucide-react";
 
 export default function SignIn() {
   const router = useRouter();
-  const { setUser, loadFromFirestore } = useStore();
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
       if (user) {
-        await loadFromFirestore(user.uid);
         router.push("/view/main");
       }
     });
+
     return () => unsub();
-  }, [setUser, loadFromFirestore, router]);
+  }, [router]);
 
   const handleSignIn = async () => {
     try {
@@ -31,6 +29,7 @@ export default function SignIn() {
   };
 
   const handleGuest = () => {
+    useStore.getState().setIsGuest(true);
     router.push("/view/main");
   };
 
@@ -40,11 +39,12 @@ export default function SignIn() {
         <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mb-4">
           <MapPin size={32} className="text-white" />
         </div>
+        
         <h1 className="text-3xl font-extrabold tracking-tight">VNTourInMinutes</h1>
         <p className="text-neutral-500 text-lg pb-8">
           Plan your own tour in minutes.
         </p>
-
+        
         <button
           onClick={handleSignIn}
           className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-3"

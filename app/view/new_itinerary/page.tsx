@@ -1,21 +1,12 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ArrowRight, MapPin, Check, Plus, Trash2, GripVertical, CheckCircle2, Share, Loader2 } from "lucide-react";
+import { ChevronLeft, ArrowRight, MapPin, Check, Plus, Trash2, GripVertical, CheckCircle2, Share, Loader2, Info, X, AlertTriangle, Edit2, Car, Bus, Bike } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
-
-const VIETNAM_CITIES = [
-  { id: "hanoi", vi: "Hà Nội", en: "Hanoi" },
-  { id: "hcmc", vi: "Hồ Chí Minh", en: "Ho Chi Minh City" },
-  { id: "danang", vi: "Đà Nẵng", en: "Da Nang" },
-  { id: "hue", vi: "Huế", en: "Hue" },
-  { id: "hoian", vi: "Hội An", en: "Hoi An" },
-  { id: "dalat", vi: "Đà Lạt", en: "Da Lat" },
-  { id: "nhatrang", vi: "Nha Trang", en: "Nha Trang" },
-];
+import { VIETNAM_CITIES } from "@/lib/cities";
 
 const CATEGORIES = [
   { id: "tourist_attraction", label: "Tourist Attraction" },
@@ -47,12 +38,152 @@ export default function NewItinerary() {
   const [candidates, setCandidates] = useState<Place[]>([]);
   const [introduction, setIntroduction] = useState("");
   
+  const [showInfoPopup, setShowInfoPopup] = useState(false);
+  const [showDiscardPopup, setShowDiscardPopup] = useState(false);
+  const [isCityDropdownOpen, setIsCityDropdownOpen] = useState(false);
+  const [citySearchQuery, setCitySearchQuery] = useState("");
+  const [showCityInfoPopup, setShowCityInfoPopup] = useState(false);
+  const [cityInfoSearchQuery, setCityInfoSearchQuery] = useState("");
+  const cityDropdownRef = useRef<HTMLDivElement>(null);
+  
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (cityDropdownRef.current && !cityDropdownRef.current.contains(event.target as Node)) {
+        setIsCityDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [showTimeWarningPopup, setShowTimeWarningPopup] = useState(false);
+  
+  const handleBackClick = () => {
+    if (itineraryItems.length > 0 || candidates.length > 0 || step > 1) {
+      setShowDiscardPopup(true);
+    } else {
+      router.push("/view/main");
+    }
+  };
+
+  const isPlaceClosed = (item: ItineraryItem) => {
+    if (!item.opening_time || !item.start_time || !item.end_time) return false;
+    const lower = item.opening_time.toLowerCase();
+    if (lower.includes("24 hours") || lower.includes("24/7")) return false;
+    
+    const match = item.opening_time.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    if (!match) return false;
+    const [_, open, close] = match;
+    
+    const parseTime = (t: string) => {
+      const [h, m] = t.split(':').map(Number);
+      return h * 60 + m;
+    };
+    
+    const openMins = parseTime(open);
+    let closeMins = parseTime(close);
+    if (closeMins < openMins) closeMins += 24 * 60; // overnight
+    
+    const startDate = new Date(item.start_time);
+    const endDate = new Date(item.end_time);
+    
+    const startMins = startDate.getHours() * 60 + startDate.getMinutes();
+    let endMins = endDate.getHours() * 60 + endDate.getMinutes();
+    if (endMins < startMins) endMins += 24 * 60;
+    
+    // Adjust start/end to be relative to opening time if it crosses midnight
+    let adjustedStart = startMins;
+    let adjustedEnd = endMins;
+    if (adjustedStart < openMins && (adjustedStart + 24 * 60) <= closeMins) {
+      adjustedStart += 24 * 60;
+      adjustedEnd += 24 * 60;
+    }
+    
+    return adjustedStart < openMins || adjustedEnd > closeMins;
+  };
+  
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
+  const hasTimeWarnings = itineraryItems.some(isPlaceClosed);
+  
+  const [editingStayTimeIdx, setEditingStayTimeIdx] = useState<number | null>(null);
+  const [newStayTimeMins, setNewStayTimeMins] = useState<string>("");
+
+  const handleSaveStayTime = () => {
+    if (editingStayTimeIdx === null) return;
+    const mins = parseInt(newStayTimeMins, 10);
+    if (isNaN(mins) || mins <= 0) {
+      setEditingStayTimeIdx(null);
+      return;
+    }
+
+    const newItems = [...itineraryItems];
+    const newStaySecs = mins * 60;
+    
+    newItems[editingStayTimeIdx] = { ...newItems[editingStayTimeIdx], suggested_stay_time_secs: newStaySecs };
+    
+    for (let i = editingStayTimeIdx; i < newItems.length; i++) {
+      if (i === editingStayTimeIdx) {
+        const start = new Date(newItems[i].start_time).getTime();
+        newItems[i] = { ...newItems[i], end_time: new Date(start + newStaySecs * 1000).toISOString() };
+      } else {
+        const prevOldEndTime = new Date(itineraryItems[i - 1].end_time).getTime();
+        const thisOldStartTime = new Date(itineraryItems[i].start_time).getTime();
+        const travelSecs = Math.max(0, (thisOldStartTime - prevOldEndTime) / 1000);
+        
+        const prevNewEndTime = new Date(newItems[i - 1].end_time).getTime();
+        const staySecs = newItems[i].suggested_stay_time_secs || 3600;
+        
+        newItems[i] = { 
+          ...newItems[i], 
+          start_time: new Date(prevNewEndTime + travelSecs * 1000).toISOString(),
+          end_time: new Date(prevNewEndTime + travelSecs * 1000 + staySecs * 1000).toISOString()
+        };
+      }
+    }
+    
+    setItineraryItems(newItems);
+    setEditingStayTimeIdx(null);
+  };
+
+  const handleSaveTourClick = () => {
+    if (hasTimeWarnings) {
+      setShowTimeWarningPopup(true);
+    } else {
+      handleNext();
+    }
+  };
   const [transport, setTransport] = useState<"CAR"|"BUS"|"BIKE">("CAR");
   const [isCalculating, setIsCalculating] = useState(false);
   const [hasUncalculatedChanges, setHasUncalculatedChanges] = useState(false);
 
   const [finalName, setFinalName] = useState("");
+
+  const handleTimeChange = (newTime: string) => {
+    setTime(newTime);
+    if (itineraryItems.length === 0) return;
+
+    const paddedTime = newTime.length === 4 ? `0${newTime}` : newTime;
+    let currentStartTime = new Date(`${date}T${paddedTime}`);
+    const newItems = [...itineraryItems];
+    
+    for (let i = 0; i < newItems.length; i++) {
+      if (!newItems[i].start_time) continue;
+      
+      const oldStartTime = new Date(itineraryItems[i].start_time).getTime();
+      let travelSecs = 0;
+      if (i > 0) {
+         const prevOldEndTime = new Date(itineraryItems[i - 1].end_time).getTime();
+         travelSecs = Math.max(0, (oldStartTime - prevOldEndTime) / 1000);
+         currentStartTime = new Date(new Date(newItems[i - 1].end_time).getTime() + travelSecs * 1000);
+      }
+      
+      newItems[i].start_time = currentStartTime.toISOString();
+      const staySecs = newItems[i].suggested_stay_time_secs || 3600;
+      const endTime = new Date(currentStartTime.getTime() + staySecs * 1000);
+      newItems[i].end_time = endTime.toISOString();
+    }
+    setItineraryItems(newItems);
+  };
 
   const handleNext = async () => {
     if (step === 1) {
@@ -66,12 +197,13 @@ export default function NewItinerary() {
       setIsLoading(true);
       setErrorMsg("");
       try {
-        const datetime = new Date(`${date}T${time}`).toISOString();
+        const paddedTime = time.length === 4 ? `0${time}` : time;
+        const datetime = new Date(`${date}T${paddedTime}`).toISOString();
         const res = await fetch("/api/get_places", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            city: VIETNAM_CITIES.find(c => c.id === city)?.en || city,
+            city: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
             datetime,
             place_types: selectedCategories,
             pref_children_friendly: prefChildrenFriendly,
@@ -96,7 +228,7 @@ export default function NewItinerary() {
         setIsLoading(false);
       }
     } else if (step === 2) {
-      const cityName = VIETNAM_CITIES.find(c => c.id === city)?.en || city;
+      const cityName = VIETNAM_CITIES.find(c => c.id === city)?.name_en || city;
       const formattedDate = new Date(date).toLocaleDateString("en-US", { month: "long", day: "numeric" });
       setFinalName(`${cityName} trip, ${formattedDate}`);
       setStep(3);
@@ -115,7 +247,8 @@ export default function NewItinerary() {
       });
       const travelTimes = await res.json();
       
-      let currentStartTime = new Date(`${date}T${time}`);
+      const paddedTime = time.length === 4 ? `0${time}` : time;
+      let currentStartTime = new Date(`${date}T${paddedTime}`);
       const newItems = [...itineraryItems];
       
       for (let i = 0; i < newItems.length; i++) {
@@ -175,11 +308,12 @@ export default function NewItinerary() {
   };
 
   const handleSave = () => {
+    const paddedTime = time.length === 4 ? `0${time}` : time;
     addItinerary({
       id: uuidv4(),
       name: finalName,
-      Start_DateTime: new Date(`${date}T${time}`).toISOString(),
-      City: VIETNAM_CITIES.find(c => c.id === city)?.en || city,
+      Start_DateTime: new Date(`${date}T${paddedTime}`).toISOString(),
+      City: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
       transport,
       items: itineraryItems
     });
@@ -196,7 +330,7 @@ export default function NewItinerary() {
     return (
       <div className="min-h-screen bg-white text-neutral-900 pb-24 font-sans">
         <header className="h-16 px-4 flex items-center border-b border-neutral-100 sticky top-0 bg-white z-10">
-          <button onClick={() => router.back()} className="p-2 -ml-2 text-neutral-400 hover:text-black">
+          <button onClick={handleBackClick} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
           <h1 className="ml-2 font-extrabold tracking-tight text-lg">New Tour</h1>
@@ -204,40 +338,74 @@ export default function NewItinerary() {
 
         <main className="p-6 space-y-8 max-w-2xl mx-auto">
           <div className="space-y-4">
-            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Destination</label>
-            <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-neutral-400" size={20} />
-              <select 
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 pl-12 pr-4 text-lg font-medium appearance-none focus:outline-none focus:border-neutral-300"
+            <div className="flex justify-between items-center">
+              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Destination</label>
+              <button 
+                onClick={() => setShowCityInfoPopup(true)} 
+                className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
               >
-                {VIETNAM_CITIES.map(c => (
-                  <option key={c.id} value={c.id}>{c.en} ({c.vi})</option>
-                ))}
-              </select>
+                <Info size={14} /> ABOUT CITIES
+              </button>
+            </div>
+            
+            <div className="relative" ref={cityDropdownRef}>
+              <MapPin className="absolute left-4 top-3.5 text-neutral-400" size={20} />
+              <div 
+                className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 pl-12 pr-4 text-lg font-medium cursor-pointer"
+                onClick={() => setIsCityDropdownOpen(true)}
+              >
+                {VIETNAM_CITIES.find(c => c.id === city)?.name_en || "Select a city"}
+              </div>
+              
+              {isCityDropdownOpen && (
+                <div className="absolute z-20 w-full mt-1 bg-white border border-neutral-200 rounded-md shadow-lg max-h-60 flex flex-col overflow-hidden">
+                  <div className="p-2 border-b border-neutral-100 shrink-0">
+                     <input 
+                       type="text" 
+                       placeholder="Search city..." 
+                       value={citySearchQuery}
+                       onChange={(e) => setCitySearchQuery(e.target.value)}
+                       className="w-full bg-neutral-100 px-3 py-2 rounded text-sm focus:outline-none"
+                       autoFocus
+                     />
+                  </div>
+                  <div className="overflow-y-auto flex-1">
+                    {VIETNAM_CITIES.filter(c => 
+                       c.name_en.toLowerCase().includes(citySearchQuery.toLowerCase()) || 
+                       c.name_vi.toLowerCase().includes(citySearchQuery.toLowerCase())
+                    ).map(c => (
+                      <div 
+                        key={c.id} 
+                        className="px-4 py-2 hover:bg-neutral-100 cursor-pointer text-sm"
+                        onClick={() => {
+                           setCity(c.id);
+                           setIsCityDropdownOpen(false);
+                           setCitySearchQuery("");
+                        }}
+                      >
+                        <span className="font-medium">{c.name_en}</span> <span className="text-neutral-500 text-xs">({c.name_vi})</span>
+                      </div>
+                    ))}
+                    {VIETNAM_CITIES.filter(c => 
+                       c.name_en.toLowerCase().includes(citySearchQuery.toLowerCase()) || 
+                       c.name_vi.toLowerCase().includes(citySearchQuery.toLowerCase())
+                    ).length === 0 && (
+                      <div className="px-4 py-3 text-sm text-neutral-500 text-center">No city found</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-4">
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Date</label>
-              <input 
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 px-4 text-lg font-medium focus:outline-none focus:border-neutral-300"
-              />
-            </div>
-            <div className="space-y-4">
-              <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Start Time</label>
-              <input 
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-                className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 px-4 text-lg font-medium focus:outline-none focus:border-neutral-300"
-              />
-            </div>
+          <div className="space-y-4">
+            <label className="block text-xs font-semibold text-neutral-400 uppercase tracking-wider">Date</label>
+            <input 
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="w-full bg-neutral-50 border border-neutral-200 rounded-md py-3 px-4 text-lg font-medium focus:outline-none focus:border-neutral-300"
+            />
           </div>
 
           <div className="space-y-4">
@@ -313,15 +481,98 @@ export default function NewItinerary() {
             </button>
           </div>
         </div>
+
+        {/* Discard Popup */}
+        {showDiscardPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col p-6">
+              <h2 className="font-bold text-xl mb-2 text-neutral-900">Discard itinerary?</h2>
+              <p className="text-neutral-500 mb-6 leading-relaxed">Are you sure you want to go back? Your current itinerary and generated suggestions will be lost.</p>
+              <div className="flex items-center gap-3 w-full">
+                <button 
+                  onClick={() => setShowDiscardPopup(false)} 
+                  className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => router.push("/view/main")} 
+                  className="flex-1 py-3 px-4 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+        {/* City Info Popup (About Cities) */}
+        {showCityInfoPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+              <div className="flex items-center justify-between p-4 border-b border-neutral-100 shrink-0">
+                <h2 className="font-bold text-lg">About Cities</h2>
+                <button onClick={() => setShowCityInfoPopup(false)} className="p-2 hover:bg-neutral-100 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 border-b border-neutral-100 shrink-0">
+                 <input 
+                   type="text" 
+                   placeholder="Search by city name or information..." 
+                   value={cityInfoSearchQuery}
+                   onChange={(e) => setCityInfoSearchQuery(e.target.value)}
+                   className="w-full bg-neutral-100 px-4 py-2 rounded-lg text-sm focus:outline-none"
+                   autoFocus
+                 />
+              </div>
+              <div className="p-4 overflow-y-auto flex flex-col gap-6 flex-1">
+                {VIETNAM_CITIES.filter(c => 
+                   c.name_en.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) || 
+                   c.name_vi.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) ||
+                   c.tourist_summary_en.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) ||
+                   c.tourist_summary_vi.toLowerCase().includes(cityInfoSearchQuery.toLowerCase())
+                ).map(c => (
+                  <div key={c.id} className="flex flex-col gap-2 border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <h3 className="font-bold text-lg">{c.name_en} <span className="text-sm font-normal text-neutral-500">({c.name_vi})</span></h3>
+                      <button
+                        onClick={() => {
+                          setCity(c.id);
+                          setShowCityInfoPopup(false);
+                          setCityInfoSearchQuery("");
+                        }}
+                        className="bg-black text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-neutral-800 transition-colors shrink-0 whitespace-nowrap"
+                      >
+                        Select City
+                      </button>
+                    </div>
+                    <p className="text-sm text-neutral-600 leading-relaxed">
+                      {c.tourist_summary_en}
+                    </p>
+                  </div>
+                ))}
+                {VIETNAM_CITIES.filter(c => 
+                   c.name_en.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) || 
+                   c.name_vi.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) ||
+                   c.tourist_summary_en.toLowerCase().includes(cityInfoSearchQuery.toLowerCase()) ||
+                   c.tourist_summary_vi.toLowerCase().includes(cityInfoSearchQuery.toLowerCase())
+                ).length === 0 && (
+                  <div className="text-center py-8 text-neutral-500 text-sm">No matches found.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
 
   if (step === 2) {
     return (
-      <div className="min-h-screen bg-white text-neutral-900 flex flex-col font-sans">
+      <div className="h-[100dvh] bg-white text-neutral-900 flex flex-col font-sans overflow-hidden">
         <header className="h-16 px-4 flex items-center bg-white border-b border-neutral-100 shrink-0">
-          <button onClick={() => setStep(1)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
+          <button onClick={handleBackClick} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">
@@ -329,9 +580,23 @@ export default function NewItinerary() {
           </div>
         </header>
 
-        <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full">
+        <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full overflow-hidden">
+          {/* Start Time Configurator */}
+          <div className="p-4 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0 z-10 shadow-sm">
+            <div>
+              <h2 className="text-sm font-bold text-neutral-800">Tour Start Time</h2>
+              <p className="text-xs text-neutral-500">Adjust when your day begins</p>
+            </div>
+            <input 
+              type="time"
+              value={time}
+              onChange={(e) => handleTimeChange(e.target.value)}
+              className="bg-neutral-50 border border-neutral-200 rounded-md py-2 px-3 text-sm font-medium focus:outline-none focus:border-neutral-300"
+            />
+          </div>
+
           {/* Pending Itinerary */}
-          <div className="p-4 max-h-[40vh] overflow-y-auto shrink-0 border-b border-neutral-100">
+          <div className="flex-1 overflow-y-auto p-4 bg-white relative">
             <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Your Itinerary ({itineraryItems.length}/10)</h2>
             
             {itineraryItems.length === 0 ? (
@@ -339,88 +604,231 @@ export default function NewItinerary() {
                 <p>Select places from below to add to your tour.</p>
               </div>
             ) : (
-              <div className="space-y-3">
-                {itineraryItems.map((item, idx) => (
-                  <div key={item.maps_place_id || `itinerary-${idx}`} className="bg-neutral-50 p-4 rounded-xl border border-neutral-100 flex items-center gap-4">
-                    <div className="flex flex-col gap-1 text-neutral-400">
+              <div className="space-y-3 pb-4">
+                {itineraryItems.map((item, idx) => {
+                  const isClosed = isPlaceClosed(item);
+                  return (
+                  <div key={item.maps_place_id || `itinerary-${idx}`} className={`p-4 rounded-xl border flex items-center gap-4 ${isClosed ? "bg-yellow-50 border-yellow-200" : "bg-neutral-50 border-neutral-100"}`}>
+                    <div className={`flex flex-col gap-1 ${isClosed ? "text-yellow-700/50" : "text-neutral-400"}`}>
                       <button onClick={() => moveItem(idx, -1)} disabled={idx === 0} className="hover:text-black"><ChevronLeft className="rotate-90" size={20} /></button>
                       <button onClick={() => moveItem(idx, 1)} disabled={idx === itineraryItems.length - 1} className="hover:text-black"><ChevronLeft className="-rotate-90" size={20} /></button>
                     </div>
                     <div className="flex-1">
                       <h3 className="font-bold text-base leading-tight">{item.name}</h3>
-                      <div className="flex justify-between mt-2 text-sm text-neutral-600 font-medium">
-                        <span className="bg-white px-2 py-1 rounded border border-neutral-200">{formatTime(item.start_time)} - {formatTime(item.end_time)}</span>
-                        <span className="bg-white px-2 py-1 rounded border border-neutral-200">{Math.round((item.suggested_stay_time_secs || 3600) / 60)} mins</span>
+                      <div className={`flex justify-between mt-2 text-sm font-medium ${isClosed ? "text-yellow-800" : "text-neutral-600"}`}>
+                        <span className={`px-2 py-1 rounded border ${isClosed ? "bg-yellow-100/50 border-yellow-200" : "bg-white border-neutral-200"}`}>{formatTime(item.start_time)} - {formatTime(item.end_time)}</span>
+                        <button 
+                          onClick={() => { setEditingStayTimeIdx(idx); setNewStayTimeMins(String(Math.round((item.suggested_stay_time_secs || 3600) / 60))); }}
+                          className={`px-2 py-1 rounded border flex items-center gap-1 hover:bg-black/5 transition-colors ${isClosed ? "bg-yellow-100/50 border-yellow-200" : "bg-white border-neutral-200"}`}
+                        >
+                          {Math.round((item.suggested_stay_time_secs || 3600) / 60)} mins
+                          <Edit2 size={12} />
+                        </button>
                       </div>
+                      {isClosed && (
+                        <div className="mt-2 text-xs font-semibold text-yellow-700">
+                          Warning: Outside opening hours ({item.opening_time})
+                        </div>
+                      )}
                     </div>
-                    <button onClick={() => removeFromItinerary(idx)} className="p-2 text-red-500 hover:bg-red-50 rounded-md shrink-0">
+                    <button onClick={() => removeFromItinerary(idx)} className={`p-2 rounded-md shrink-0 ${isClosed ? "text-yellow-700 hover:bg-yellow-100" : "text-red-500 hover:bg-red-50"}`}>
                       <Trash2 size={20} />
                     </button>
                   </div>
-                ))}
+                )})}
               </div>
             )}
           </div>
           
-          {/* Candidates */}
-          <div className="p-4 pb-32 flex-1">
-            <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Suggestions</h2>
-            <div className="flex overflow-x-scroll gap-4 pb-4 snap-x">
-              {candidates.map((c, idx) => (
-                <div key={c.local_id || `candidate-${idx}`} className="bg-neutral-50 border border-neutral-100 rounded-xl p-4 flex flex-col gap-3 min-w-[280px] w-[280px] snap-start shrink-0">
-                  <div className="flex flex-col gap-1">
-                    <h3 className="font-bold text-base leading-tight">{c.name}</h3>
-                    <p className="text-sm text-neutral-500">{c.category} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
-                    <div className="flex items-center gap-1 bg-white border border-neutral-200 px-2 py-1 rounded-md text-xs font-semibold uppercase tracking-widest text-neutral-500 w-max mt-1">
-                      <span>★</span>
-                      <span className="text-neutral-900">{c.rating}</span>
-                      <span>({c.rate_count})</span>
+          {/* Suggestions & Bottom controls Combined */}
+          <div className="shrink-0 flex flex-col bg-white border-t border-neutral-200 z-10 shadow-[0_-4px_15px_-5px_rgba(0,0,0,0.05)]">
+            <div className="p-4 pb-2">
+              <div className="flex justify-between items-center mb-3 px-1">
+                <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Suggestions</h2>
+                <button 
+                  onClick={() => setShowInfoPopup(true)} 
+                  className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
+                >
+                  <Info size={14} /> INFO
+                </button>
+              </div>
+              <div className="flex overflow-x-scroll gap-4 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                {candidates.map((c, idx) => (
+                  <div key={c.local_id || `candidate-${idx}`} className="bg-white border border-neutral-200 rounded-xl p-3 flex flex-col gap-2 min-w-[260px] w-[260px] snap-start shrink-0 shadow-sm">
+                    <div className="flex flex-col gap-0.5 w-full">
+                      <div className="flex items-start justify-between gap-3 w-full">
+                        <h3 className="font-semibold text-sm flex-1 line-clamp-2 mt-1">{c.name}</h3>
+                        <button 
+                          onClick={() => addToItinerary(c)}
+                          disabled={itineraryItems.length >= 10}
+                          className="py-2 px-3 bg-black text-white rounded-md hover:bg-neutral-800 disabled:opacity-50 shrink-0 flex items-center justify-center"
+                        >
+                          <Plus size={14} />
+                        </button>
+                      </div>
+                      <p className="text-xs text-neutral-500 truncate mt-1">{c.category} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
+                      <div className="flex items-center gap-1.5 mt-1">
+                        <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
+                          <span>★</span>
+                          <span className="text-neutral-900">{c.rating}</span>
+                          <span>({c.rate_count})</span>
+                        </div>
+                        {c.opening_time && (
+                          <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
+                            <span>{c.opening_time}</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  <p className="text-sm text-neutral-500 leading-relaxed line-clamp-3 flex-1">{c.introduction}</p>
-                  <button 
-                    onClick={() => addToItinerary(c)}
-                    disabled={itineraryItems.length >= 10}
-                    className="w-full mt-auto py-2 bg-black text-white font-medium rounded-md flex items-center justify-center gap-2 hover:bg-neutral-800 disabled:opacity-50 transition-colors shrink-0"
+                ))}
+              </div>
+            </div>
+
+            {/* Bottom actions */}
+            <div className="p-4 space-y-3 shrink-0">
+              <div className="flex gap-2">
+                {(["CAR", "BUS", "BIKE"] as const).map(t => (
+                  <button
+                    key={t}
+                    onClick={() => { setTransport(t); setHasUncalculatedChanges(true); }}
+                    className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-widest rounded-md border transition-colors ${transport === t ? "bg-black border-black text-white" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"}`}
                   >
-                    <Plus size={16} /> {itineraryItems.length >= 10 ? "Limit Reached (10)" : "Add to Tour"}
+                    {t === "CAR" && <Car size={14} />}
+                    {t === "BUS" && <Bus size={14} />}
+                    {t === "BIKE" && <Bike size={14} />}
+                    {t}
                   </button>
-                </div>
-              ))}
+                ))}
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCalculateRoutes}
+                  disabled={!hasUncalculatedChanges || itineraryItems.length < 2 || isCalculating}
+                  className="flex-1 py-3 bg-neutral-100 text-neutral-900 rounded-md font-medium disabled:opacity-50 hover:bg-neutral-200 transition-colors"
+                >
+                  {isCalculating ? "Calculating..." : "Recalculate Routes"}
+                </button>
+                <button
+                  onClick={handleSaveTourClick}
+                  disabled={itineraryItems.length === 0 || hasUncalculatedChanges}
+                  className="flex-1 py-3 bg-black text-white rounded-md font-medium disabled:opacity-50 hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
+                >
+                  {hasTimeWarnings && <AlertTriangle size={18} className="text-yellow-400" />} Save Tour
+                </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom controls */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-neutral-100 p-4 space-y-3 z-10">
-          <div className="max-w-2xl mx-auto flex gap-2">
-            {(["CAR", "BUS", "BIKE"] as const).map(t => (
-              <button
-                key={t}
-                onClick={() => { setTransport(t); setHasUncalculatedChanges(true); }}
-                className={`flex-1 py-2 text-xs font-semibold uppercase tracking-widest rounded-md border transition-colors ${transport === t ? "bg-black border-black text-white" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"}`}
-              >
-                {t}
-              </button>
-            ))}
+        {/* Edit Stay Time Popup */}
+        {editingStayTimeIdx !== null && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-xs rounded-2xl shadow-xl flex flex-col p-6">
+              <h2 className="font-bold text-xl mb-4 text-neutral-900 text-center">Edit Stay Time</h2>
+              <div className="flex items-center gap-2 mb-6 justify-center">
+                <input 
+                  type="number" 
+                  min="1"
+                  value={newStayTimeMins} 
+                  onChange={(e) => setNewStayTimeMins(e.target.value)} 
+                  className="w-24 border border-neutral-200 rounded-md py-2 px-3 text-center font-semibold focus:outline-none focus:border-black"
+                />
+                <span className="font-semibold text-neutral-500">mins</span>
+              </div>
+              <div className="flex items-center gap-3 w-full">
+                <button 
+                  onClick={() => setEditingStayTimeIdx(null)} 
+                  className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveStayTime} 
+                  className="flex-1 py-3 px-4 bg-black text-white font-medium rounded-md hover:bg-neutral-800 transition-colors"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="max-w-2xl mx-auto flex gap-3">
-            <button
-              onClick={handleCalculateRoutes}
-              disabled={!hasUncalculatedChanges || itineraryItems.length < 2 || isCalculating}
-              className="flex-1 py-3 bg-neutral-100 text-neutral-900 rounded-md font-medium disabled:opacity-50 hover:bg-neutral-200 transition-colors"
-            >
-              {isCalculating ? "Calculating..." : "Recalculate Routes"}
-            </button>
-            <button
-              onClick={handleNext}
-              disabled={itineraryItems.length === 0 || hasUncalculatedChanges}
-              className="flex-1 py-3 bg-black text-white rounded-md font-medium disabled:opacity-50 hover:bg-neutral-800 transition-colors"
-            >
-              Save Tour
-            </button>
+        )}
+
+        {/* Time Warning Popup */}
+        {showTimeWarningPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col p-6">
+              <div className="flex items-center gap-3 mb-2">
+                <AlertTriangle className="text-yellow-500" size={24} />
+                <h2 className="font-bold text-xl text-neutral-900">Time Warning</h2>
+              </div>
+              <p className="text-neutral-500 mb-6 leading-relaxed">Some places in your itinerary are scheduled outside of their regular opening hours. Do you want to proceed anyway?</p>
+              <div className="flex items-center gap-3 w-full">
+                <button 
+                  onClick={() => setShowTimeWarningPopup(false)} 
+                  className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => { setShowTimeWarningPopup(false); handleNext(); }} 
+                  className="flex-1 py-3 px-4 bg-black text-white font-medium rounded-md hover:bg-neutral-800 transition-colors"
+                >
+                  Proceed
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
+        )}
+
+        {/* Info Popup */}
+        {showInfoPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+              <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+                <h2 className="font-bold text-lg">Places Information</h2>
+                <button onClick={() => setShowInfoPopup(false)} className="p-2 hover:bg-neutral-100 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex flex-col gap-6 flex-1">
+                {candidates.length === 0 ? (
+                  <p className="text-neutral-500 text-center py-8">No places available.</p>
+                ) : (
+                  candidates.map((c, idx) => (
+                    <div key={`info-${c.local_id || idx}`} className="flex flex-col gap-2 border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0">
+                      <h3 className="font-bold text-lg">{c.name}</h3>
+                      <p className="text-sm text-neutral-600 leading-relaxed">{c.introduction || "No description available."}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+        {/* Discard Popup for Step 2 */}
+        {showDiscardPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col p-6">
+              <h2 className="font-bold text-xl mb-2 text-neutral-900">Discard itinerary?</h2>
+              <p className="text-neutral-500 mb-6 leading-relaxed">Are you sure you want to go back? Your current itinerary and generated suggestions will be lost.</p>
+              <div className="flex items-center gap-3 w-full">
+                <button 
+                  onClick={() => setShowDiscardPopup(false)} 
+                  className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={() => router.push("/view/main")} 
+                  className="flex-1 py-3 px-4 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition-colors"
+                >
+                  Discard
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

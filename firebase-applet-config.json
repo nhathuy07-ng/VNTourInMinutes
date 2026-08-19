@@ -1,9 +1,12 @@
 {
-  "apiKey": "dummy-api-key",
-  "authDomain": "dummy-auth-domain.firebaseapp.com",
-  "projectId": "dummy-project-id",
-  "storageBucket": "dummy-project-id.appspot.com",
-  "messagingSenderId": "1234567890",
-  "appId": "1:1234567890:web:1234567890",
-  "firestoreDatabaseId": "(default)"
+  "projectId": "voltaic-analyzer-c8chg",
+  "appId": "1:741542600033:web:afa48a68467a30ff02b920",
+  "apiKey": "AIzaSyDH_W_ToXdx6jLQvSUK6X4hnZOwNawVIFk",
+  "authDomain": "voltaic-analyzer-c8chg.firebaseapp.com",
+  "firestoreDatabaseId": "ai-studio-vntourinminutes-3ce94551-2e20-4cba-b139-f403e828e615",
+  "storageBucket": "voltaic-analyzer-c8chg.firebasestorage.app",
+  "messagingSenderId": "741542600033",
+  "measurementId": "",
+  "oAuthClientId": "741542600033-dv9h4ht4slj8hpdiegggeb5gaulp4ure.apps.googleusercontent.com",
+  "recaptchaSiteKey": ""
 }

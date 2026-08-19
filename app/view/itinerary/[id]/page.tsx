@@ -10,13 +10,26 @@ export default function ItineraryView() {
   const router = useRouter();
   const params = useParams();
   const id = params.id as string;
-  const { itineraries, deleteItinerary } = useStore();
+  const { itineraries, deleteItinerary, loadItinerary } = useStore();
+  const user = useStore(state => state.user);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
 
   useEffect(() => {
     const found = itineraries.find(i => i.id === id);
-    if (found) setItinerary(found);
-  }, [id, itineraries]);
+    if (found) {
+       setItinerary(found);
+       // If it doesn't have items, it's just a summary, load the full details
+       if (!found.items && user) {
+           loadItinerary(user.uid, id).then(fullItin => {
+               if (fullItin) setItinerary(fullItin);
+           });
+       }
+    } else if (user) {
+        loadItinerary(user.uid, id).then(fullItin => {
+            if (fullItin) setItinerary(fullItin);
+        });
+    }
+  }, [id, itineraries, user, loadItinerary]);
 
   if (!itinerary) {
     return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
@@ -84,39 +97,41 @@ export default function ItineraryView() {
       </header>
 
       <main className="p-6 max-w-3xl mx-auto">
-        <div className="mb-12 text-center space-y-4">
-          <h2 className="text-5xl font-extrabold tracking-tight">{itinerary.name}</h2>
-          <p className="text-lg text-neutral-500 font-light leading-relaxed">{new Date(itinerary.Start_DateTime).toLocaleDateString()} — {itinerary.City}</p>
-          <div className="mt-4 inline-block bg-neutral-50 border border-neutral-200 px-2 py-1 rounded text-[10px] uppercase font-bold tracking-widest text-neutral-600">
-            Transport: {itinerary.transport}
+        <div className="mb-8 space-y-2">
+          <h2 className="text-2xl font-extrabold tracking-tight text-neutral-800">{itinerary.name}</h2>
+          <div className="flex items-center flex-wrap gap-2 text-sm text-neutral-500 font-medium">
+            <span>{new Date(itinerary.Start_DateTime).toLocaleDateString()}</span>
+            <span>·</span>
+            <span>{itinerary.City}</span>
+            <span>·</span>
+            <span className="capitalize">{itinerary.transport}</span>
           </div>
         </div>
 
         <div className="h-[1px] bg-neutral-100 w-full mb-12"></div>
 
         <div className="space-y-4">
-          {itinerary.items.map((item, idx) => (
+          {itinerary.items ? itinerary.items.map((item, idx) => (
             <div key={idx} className="flex flex-col gap-2">
-              <div className="flex flex-col sm:flex-row gap-4 items-start bg-neutral-50 p-6 rounded-xl border border-neutral-100">
-                <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-black text-white shrink-0 shadow-sm sm:mt-1">
-                  <span className="text-[10px] font-bold font-mono">{(idx + 1).toString().padStart(2, '0')}</span>
-                </div>
+              <div className="flex flex-col sm:flex-row gap-4 items-start bg-neutral-50 p-3 rounded-xl border border-neutral-100">
                 
                 <div className="flex-1 w-full">
-                  <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+                  <div>
+                    <h3 className="text-xl font-semibold text-neutral-600 whitespace-nowrap">
+                      {formatTime(item.start_time)} - {formatTime(item.end_time)}
+                    </h3>
+                  </div>
+                  
+                  <div className="flex flex-wrap items-center justify-between gap-3 mb-1">
                     <h3 className="font-bold text-xl text-neutral-800">{item.name}</h3>
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="text-sm font-semibold text-neutral-700 bg-white px-2 py-1 rounded border border-neutral-200 shadow-sm font-mono whitespace-nowrap">
-                        {formatTime(item.start_time)} - {formatTime(item.end_time)} ({Math.round((item.suggested_stay_time_secs || 3600) / 60)} mins)
-                      </span>
-                    </div>
                   </div>
 
-                  <div className="flex items-center gap-2 mb-4 flex-wrap">
-                    <span className="text-xs font-semibold text-neutral-500 bg-neutral-200/60 border border-neutral-200 px-2 py-1 rounded uppercase tracking-wider">
+                  <div className="flex items-center gap-2 mb-4 flex-wrap text-xs font-medium text-neutral-500">
+                    <span className="uppercase tracking-wider">
                       {item.category}
                     </span>
-                    <span className="text-xs font-semibold text-neutral-500 bg-neutral-200/60 border border-neutral-200 px-2 py-1 rounded uppercase tracking-wider">
+                    <span>•</span>
+                    <span className="uppercase tracking-wider">
                       {item.is_outdoor ? 'Outdoor' : 'Indoor'}
                     </span>
                   </div>
@@ -144,7 +159,9 @@ export default function ItineraryView() {
                 </div>
               )}
             </div>
-          ))}
+          )) : (
+            <div className="py-12 flex items-center justify-center text-neutral-400">Loading itinerary details...</div>
+          )}
         </div>
       </main>
     </div>

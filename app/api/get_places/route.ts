@@ -17,10 +17,10 @@ export async function POST(req: NextRequest) {
     const systemInstruction = `You are a helpful travel planner specialized in Vietnam.
       You are tasked with finding at least 20 candidate places in ${city} for a day tour.
       The user is interested in these categories: ${place_types.join(", ")}.
-      ${lesser_known ? "IMPORTANT: The user wants lesser known places. Please ensure candidates have < 200 reviews." : ""}
+      ${lesser_known ? "IMPORTANT: The user wants lesser known places. Please ensure candidates have < 1000 reviews." : ""}
       ${pref_accessible ? "IMPORTANT: Prefer wheelchair accessible venues." : ""}
       ${pref_children_friendly ? "IMPORTANT: Prefer child-friendly venues." : ""}
-      
+            
       You must respond ONLY with valid JSON adhering to the following schema. Do NOT include markdown blocks like \`\`\`json.
       {
         "introduction": "Brief introduction of the city's vibe (max 50 words)",
@@ -58,19 +58,44 @@ export async function POST(req: NextRequest) {
 
     let data;
     try {
-      const text = response.text || "{}";
-      const cleanText = text.replace(/```json/gi, "").replace(/```/g, "").trim();
-      data = JSON.parse(cleanText);
-      
-      if (lesser_known && data.candidates) {
-        data.candidates = data.candidates.filter(
-          (c: any) => c.rate_count !== undefined && c.rate_count < 200
-        );
+      const parseResponse = (resText: string) => {
+        let cleanText = resText.replace(/```json/gi, "").replace(/```/g, "").trim();
+        // fix single-quoted property names
+        cleanText = cleanText.replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3');
+        const parsed = JSON.parse(cleanText);
+        if (lesser_known && parsed.candidates) {
+          parsed.candidates = parsed.candidates.filter(
+            (c: any) => c.rate_count !== undefined && c.rate_count < 1000
+          );
+        }
+        return parsed;
+      };
+
+      data = parseResponse(response.text || "{}");
+
+      if (data.candidates && data.candidates.length < 10) {
+        const excludedNames = data.candidates.map((c: any) => c.name).join(", ");
+        const prompt2 = `Please find 10 more DIFFERENT candidate places in ${city} for a day tour starting at ${datetime}. Do not include these places: ${excludedNames}.`;
+        
+        const response2 = await ai.models.generateContent({
+          model: "gemini-3.5-flash-lite",
+          contents: prompt2,
+          config: {
+            systemInstruction,
+            tools: [{ googleMaps: {} }],
+          },
+        });
+        
+        const data2 = parseResponse(response2.text || "{}");
+        if (data2.candidates) {
+          data.candidates = [...data.candidates, ...data2.candidates];
+        }
       }
     } catch (parseError) {
       console.error("JSON parsing failed:", parseError, response.text);
       return NextResponse.json({ error: "JSON_PARSE_ERROR", message: "Failed to parse AI response. Please try again." }, { status: 500 });
     }
+
     return NextResponse.json(data);
   } catch (error) {
     console.error("Error in get_places:", error);
