@@ -1,7 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+let aiClient: GoogleGenAI | null = null;
+function getAIClient() {
+  if (!aiClient) {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not set.");
+    }
+    aiClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+  }
+  return aiClient;
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -28,7 +37,7 @@ export async function POST(req: NextRequest) {
           {
             "name": "string",
             "maps_place_id": "string (empty if unknown)",
-            "maps_coords": "lat,lng as string",
+            "maps_coords": "lat,lng as string (CRITICAL: provide EXACT coordinates with at least 6 decimal places, do NOT round)",
             "address": "string",
             "opening_time": "HH:MM - HH:MM",
             "rating": "number (0-5)",
@@ -47,6 +56,7 @@ export async function POST(req: NextRequest) {
 
     const prompt = `Find candidate places in ${city} for a day tour starting at ${datetime}.`;
 
+    const ai = getAIClient();
     const response = await ai.models.generateContent({
       model: "gemini-3.5-flash-lite",
       contents: prompt,

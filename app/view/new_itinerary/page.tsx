@@ -239,11 +239,11 @@ export default function NewItinerary() {
     if (itineraryItems.length < 2) return;
     setIsCalculating(true);
     try {
-      const coords = itineraryItems.map(i => i.maps_coords);
+      const routePoints = itineraryItems.map(i => ({ coords: i.maps_coords, name: i.name, address: i.address }));
       const res = await fetch("/api/get_routes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ place_coords: coords, preferred_vehicle: transport })
+        body: JSON.stringify({ points: routePoints, preferred_vehicle: transport })
       });
       const travelTimes = await res.json();
       

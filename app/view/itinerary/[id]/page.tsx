@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Share, Trash2, MapPin, Bus, Footprints } from "lucide-react";
+import { ChevronLeft, Share, Trash2, MapPin, Bus, Footprints, Route } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Itinerary } from "@/lib/types";
 
@@ -17,7 +17,7 @@ export default function ItineraryView() {
   useEffect(() => {
     const found = itineraries.find(i => i.id === id);
     if (found) {
-       setItinerary(found);
+       setTimeout(() => setItinerary(found), 0);
        // If it doesn't have items, it's just a summary, load the full details
        if (!found.items && user) {
            loadItinerary(user.uid, id).then(fullItin => {
@@ -40,42 +40,94 @@ export default function ItineraryView() {
     router.push("/view/main");
   };
 
+  const formatAddressForMaps = (name: string, address?: string) => {
+    if (!address) return name;
+    let cleanAddr = address.trim();
+    if (cleanAddr.toLowerCase().endsWith('vietnam')) {
+      cleanAddr = cleanAddr.slice(0, -7).trim();
+      if (cleanAddr.endsWith(',')) cleanAddr = cleanAddr.slice(0, -1).trim();
+    } else if (cleanAddr.toLowerCase().endsWith('việt nam')) {
+      cleanAddr = cleanAddr.slice(0, -8).trim();
+      if (cleanAddr.endsWith(',')) cleanAddr = cleanAddr.slice(0, -1).trim();
+    }
+    return `${name}, ${cleanAddr}`;
+  };
+
   const formatTime = (isoString: string) => {
     if (!isoString) return "--:--";
     return new Date(isoString).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  const renderTransitInstruction = (instruction: string) => {
-    try {
-      const data = JSON.parse(instruction);
-      if (data.type === "walk") {
-        return (
-          <div className="flex items-center gap-2">
-            <Footprints size={16} className="text-neutral-400" />
-            <span>{data.instruction}</span>
-          </div>
-        );
-      }
+  const renderTransitInstruction = (instruction: string, item?: any, nextItem?: any) => {
+    let linkHref = "";
+    if (item && nextItem) {
+        linkHref = `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&destination=${encodeURIComponent(formatAddressForMaps(nextItem.name, nextItem.address))}&travelmode=transit`;
+    }
+
+    const renderLink = (additionalClass = "") => {
+      if (!linkHref) return null;
       return (
-        <div className="flex flex-col gap-1 text-sm">
-          <div className="flex items-center gap-2 font-bold text-neutral-800">
-            <Bus size={32} className="text-blue-500" />
-            <span>Take {data.line}</span>
-          </div>
-          <div className="text-neutral-500 ml-6 flex flex-wrap gap-1 items-center">
-            <span>{data.departure}</span>
-            <span>→</span>
-            <span>{data.arrival}</span>
-            <span className="font-semibold">{data.stops}</span>
-          </div>
-        </div>
+        <a 
+          href={linkHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className={`px-3 py-1.5 border border-neutral-300 rounded-lg bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center gap-2 transition-colors shadow-sm self-start ${additionalClass}`}
+        >
+          <Route size={16} className="text-neutral-500" />
+          Get directions
+        </a>
+      );
+    };
+    try {
+      const parsed = JSON.parse(instruction);
+      const dataArr = Array.isArray(parsed) ? parsed : [parsed];
+      
+      return (
+        <>
+          {dataArr.map((data: any, idx: number) => (
+            <div key={idx} className="flex flex-col pt-1 pb-1 px-6 ml-4 sm:ml-10 border-l-2 border-dashed border-neutral-200">
+              <div className="text-sm font-medium text-neutral-600 bg-white border border-neutral-200 p-4 rounded-lg shadow-sm self-start">
+                {data.type === "walk" ? (
+                  <div className="flex flex-col gap-1"><div className="flex items-center gap-2">
+                    <Footprints size={16} className="text-neutral-400" />
+                    <span>{data.instruction}</span>
+                  </div>
+                  {dataArr.length === 1 && renderLink("mt-1 ml-6")}</div>
+                ) : (
+                  <div className="flex flex-col gap-1 text-sm">
+                    <div className="flex items-center gap-2 font-bold text-neutral-800">
+                      <Bus size={32} className="text-blue-500" />
+                      <span>Take {data.line}</span>
+                    </div>
+                    <div className="text-neutral-500 ml-6 flex flex-wrap gap-1 items-center">
+                      <span>{data.departure}</span>
+                      <span>→</span>
+                      <span>{data.arrival}</span>
+                      <span className="font-semibold">{data.stops}</span>
+                    </div>
+                    {dataArr.length === 1 && renderLink("mt-1 ml-6")}
+                  </div>
+                )}
+              </div>
+            </div>
+          ))}
+          {dataArr.length > 1 && (
+            <div className="flex flex-col pt-1 pb-1 px-6 ml-4 sm:ml-10 border-l-2 border-dashed border-neutral-200">
+              {renderLink()}
+            </div>
+          )}
+        </>
       );
     } catch {
       // Fallback for old itineraries stored before we stringified JSON
       return (
-        <div className="flex items-center gap-2">
-          <Bus size={16} className="text-neutral-400" />
-          <span>{instruction.replace("🚌 ", "")}</span>
+        <div className="flex flex-col py-3 px-6 ml-4 sm:ml-10 border-l-2 border-dashed border-neutral-200">
+          <div className="text-sm font-medium text-neutral-600 bg-white border border-neutral-200 p-4 rounded-lg shadow-sm self-start">
+            <div className="flex items-center gap-2">
+              <Bus size={16} className="text-neutral-400" />
+              <span>{instruction.replace("🚌 ", "")}</span>
+            </div>
+          </div>
         </div>
       );
     }
@@ -97,7 +149,7 @@ export default function ItineraryView() {
       </header>
 
       <main className="p-6 max-w-3xl mx-auto">
-        <div className="mb-8 space-y-2">
+        <div className="mb-4 space-y-2">
           <h2 className="text-2xl font-extrabold tracking-tight text-neutral-800">{itinerary.name}</h2>
           <div className="flex items-center flex-wrap gap-2 text-sm text-neutral-500 font-medium">
             <span>{new Date(itinerary.Start_DateTime).toLocaleDateString()}</span>
@@ -108,11 +160,27 @@ export default function ItineraryView() {
           </div>
         </div>
 
-        <div className="h-[1px] bg-neutral-100 w-full mb-12"></div>
-
         <div className="space-y-4">
           {itinerary.items ? itinerary.items.map((item, idx) => (
             <div key={idx} className="flex flex-col gap-2">
+              {idx === 0 && (
+                <div className="flex flex-col items-start pb-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm">
+                    <span className="text-sm font-semibold text-blue-900 text-left">
+                      Get direction to your first attraction
+                    </span>
+                    <a 
+                      href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&travelmode=${itinerary.transport === 'CAR' ? 'driving' : itinerary.transport === 'BUS' ? 'transit' : 'bicycling'}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium text-white flex items-center gap-2 transition-colors shadow-sm self-stretch sm:self-auto justify-center"
+                    >
+                      <Route size={16} className="text-white" />
+                      Get directions
+                    </a>
+                  </div>
+                </div>
+              )}
               <div className="flex flex-col sm:flex-row gap-4 items-start bg-neutral-50 p-3 rounded-xl border border-neutral-100">
                 
                 <div className="flex-1 w-full">
@@ -151,11 +219,19 @@ export default function ItineraryView() {
                 </div>
               </div>
 
-              {item.transit_instruction && (
+              {item.transit_instruction && renderTransitInstruction(item.transit_instruction, item, itinerary.items[idx+1])}
+              
+              {idx < itinerary.items.length - 1 && (itinerary.transport === "CAR" || itinerary.transport === "BIKE") && (
                 <div className="flex flex-col py-3 px-6 ml-4 sm:ml-10 border-l-2 border-dashed border-neutral-200">
-                  <div className="text-sm font-medium text-neutral-600 bg-white border border-neutral-200 p-4 rounded-lg shadow-sm self-start">
-                    {renderTransitInstruction(item.transit_instruction)}
-                  </div>
+                  <a 
+                    href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&destination=${encodeURIComponent(formatAddressForMaps(itinerary.items[idx+1].name, itinerary.items[idx+1].address))}&travelmode=${itinerary.transport === 'CAR' ? 'driving' : 'bicycling'}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3 py-1.5 border border-neutral-300 rounded-lg bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center gap-2 transition-colors shadow-sm self-start"
+                  >
+                    <Route size={16} className="text-neutral-500" />
+                    Get directions
+                  </a>
                 </div>
               )}
             </div>
