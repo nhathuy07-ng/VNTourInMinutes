@@ -32,14 +32,14 @@ export const VIETNAM_CITIES = [
         "vi": "Ngõ ẩm thực"
       },
       {
-        "id": "caf_s",
+        "id": "cafes",
         "en": "Cafés",
         "vi": "Quán cà phê"
       },
       {
-        "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "id": "night_walks",
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "lakes_parks",
@@ -97,8 +97,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "urban_parks",
@@ -156,8 +156,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "local_markets",
@@ -225,8 +225,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "local_markets",
@@ -343,8 +343,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "museums",
@@ -510,8 +510,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "oceanariums",
@@ -579,8 +579,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       },
       {
         "id": "viewpoints",
@@ -761,8 +761,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       }
     ]
   },
@@ -1705,8 +1705,8 @@ export const VIETNAM_CITIES = [
       },
       {
         "id": "nightlife",
-        "en": "Nightlife",
-        "vi": "Đời sống về đêm"
+        "en": "Night Walks",
+        "vi": "Phố đi bộ đêm"
       }
     ]
   },
@@ -3716,4 +3716,13 @@ export const VIETNAM_CITIES = [
       }
     ]
   }
+];
+export const GENERIC_PLACE_TYPES = [
+  { id: "shopping_malls", en: "Shopping Malls", vi: "Trung tâm thương mại" },
+  { id: "entertainment_centers", en: "Entertainment Centers", vi: "Trung tâm giải trí" },
+  { id: "spas_wellness", en: "Spas & Wellness", vi: "Spa & Chăm sóc sức khỏe" },
+  { id: "souvenir_shops", en: "Souvenir Shops", vi: "Cửa hàng lưu niệm" },
+  { id: "pedestrian_streets", en: "Pedestrian Streets", vi: "Phố đi bộ" },
+  { id: "convenience_stores", en: "Convenience Stores", vi: "Cửa hàng tiện lợi" },
+  { id: "observation_decks", en: "Observation Decks", vi: "Đài quan sát" }
 ];

@@ -95,12 +95,6 @@ export default function MainView() {
                   <Plus size={20} />
                   Plan your tour!
                 </Link>
-                <button
-                  disabled
-                  className="w-full py-3 px-6 bg-white text-neutral-400 border border-neutral-200 rounded-md font-medium text-lg cursor-not-allowed"
-                >
-                  Plan with friends
-                </button>
               </div>
             </div>
             

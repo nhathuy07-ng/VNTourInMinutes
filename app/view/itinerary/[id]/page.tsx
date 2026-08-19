@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Share, Trash2, MapPin, Bus, Footprints, Route } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Itinerary } from "@/lib/types";
-import { VIETNAM_CITIES } from "@/lib/cities";
+import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
 
 export default function ItineraryView() {
   const router = useRouter();
@@ -33,6 +33,9 @@ export default function ItineraryView() {
   }, [id, itineraries, user, loadItinerary]);
 
   const getCategoryLabel = (cityId: string, categoryId: string) => {
+    const genericType = GENERIC_PLACE_TYPES.find(pt => pt.id === categoryId);
+    if (genericType) return genericType.en;
+    
     const city = VIETNAM_CITIES.find(c => c.id === cityId);
     if (!city) return categoryId;
     const placeType = city.place_types?.find(pt => pt.id === categoryId);

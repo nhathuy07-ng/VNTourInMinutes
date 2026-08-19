@@ -73,7 +73,7 @@ export async function POST(req: NextRequest) {
         // fix single-quoted property names
         cleanText = cleanText.replace(/([{,]\s*)'([^']+)'(\s*:)/g, '$1"$2"$3');
         const parsed = JSON.parse(cleanText);
-        if (lesser_known && parsed.candidates) {
+        if (parsed.candidates && lesser_known) {
           parsed.candidates = parsed.candidates.filter(
             (c: any) => c.rate_count !== undefined && c.rate_count < 1000
           );

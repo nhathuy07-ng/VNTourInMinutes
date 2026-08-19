@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, ArrowRight, MapPin, Check, Plus, Trash2, GripVertical, CheckCircle2, Share, Loader2, Info, X, AlertTriangle, Edit2, Car, Bus, Bike } from "lucide-react";
+import { ChevronLeft, ChevronRight, ArrowRight, MapPin, Check, Plus, Trash2, GripVertical, CheckCircle2, Share, Loader2, Info, X, AlertTriangle, Edit2, Car, Bus, Bike } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
-import { VIETNAM_CITIES } from "@/lib/cities";
+import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
 
 export default function NewItinerary() {
   const router = useRouter();
@@ -19,6 +19,7 @@ export default function NewItinerary() {
   const [prefChildrenFriendly, setPrefChildrenFriendly] = useState(false);
   const [prefAccessible, setPrefAccessible] = useState(false);
   const [prefLesserKnown, setPrefLesserKnown] = useState(false);
+  const [showMorePlaces, setShowMorePlaces] = useState(false);
   
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -93,6 +94,9 @@ export default function NewItinerary() {
   const hasTimeWarnings = itineraryItems.some(isPlaceClosed);
   
   const getCategoryLabel = (cityId: string, categoryId: string) => {
+    const genericType = GENERIC_PLACE_TYPES.find(pt => pt.id === categoryId);
+    if (genericType) return genericType.en;
+
     const cityData = VIETNAM_CITIES.find(c => c.id === cityId);
     if (!cityData) return categoryId;
     const placeType = cityData.place_types?.find(pt => pt.id === categoryId);
@@ -209,7 +213,7 @@ export default function NewItinerary() {
           body: JSON.stringify({
             city: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
             datetime,
-            place_types: selectedCategories,
+            place_types: selectedCategories.map(catId => getCategoryLabel(city, catId)),
             pref_children_friendly: prefChildrenFriendly,
             pref_accessible: prefAccessible,
             lesser_known: prefLesserKnown,
@@ -447,25 +451,56 @@ export default function NewItinerary() {
                 <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Places</label>
                 <div className="flex flex-wrap gap-2">
                   {city ? (
-                    VIETNAM_CITIES.find(c => c.id === city)?.place_types?.map(cat => (
+                    <>
+                      {VIETNAM_CITIES.find(c => c.id === city)?.place_types?.map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            if (selectedCategories.includes(cat.id)) {
+                              setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
+                            } else {
+                              setSelectedCategories([...selectedCategories, cat.id]);
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                            selectedCategories.includes(cat.id) 
+                              ? "border-black bg-black text-white shadow-sm" 
+                              : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                          }`}
+                        >
+                          {cat.en}
+                        </button>
+                      ))}
+                      
+                      {showMorePlaces && GENERIC_PLACE_TYPES.filter(
+                        cat => !VIETNAM_CITIES.find(c => c.id === city)?.place_types?.some(pt => pt.id === cat.id)
+                      ).map(cat => (
+                        <button
+                          key={cat.id}
+                          onClick={() => {
+                            if (selectedCategories.includes(cat.id)) {
+                              setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
+                            } else {
+                              setSelectedCategories([...selectedCategories, cat.id]);
+                            }
+                          }}
+                          className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                            selectedCategories.includes(cat.id) 
+                              ? "border-black bg-black text-white shadow-sm" 
+                              : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                          }`}
+                        >
+                          {cat.en}
+                        </button>
+                      ))}
+
                       <button
-                        key={cat.id}
-                        onClick={() => {
-                          if (selectedCategories.includes(cat.id)) {
-                            setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
-                          } else {
-                            setSelectedCategories([...selectedCategories, cat.id]);
-                          }
-                        }}
-                        className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                          selectedCategories.includes(cat.id) 
-                            ? "border-black bg-black text-white shadow-sm" 
-                            : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
-                        }`}
+                        onClick={() => setShowMorePlaces(!showMorePlaces)}
+                        className="px-4 py-2 rounded-lg text-sm font-semibold border border-neutral-200 text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-all flex items-center gap-1"
                       >
-                        {cat.en}
+                        {showMorePlaces ? "Show less" : "More places..."}
                       </button>
-                    ))
+                    </>
                   ) : (
                     <span className="text-sm text-neutral-500">Please select a city first to view available places.</span>
                   )}
@@ -577,16 +612,17 @@ export default function NewItinerary() {
                 ).map(c => (
                   <div key={c.id} className="flex flex-col gap-2 border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0">
                     <div className="flex items-start justify-between gap-4">
-                      <h3 className="font-bold text-lg">{c.name_en} <span className="text-sm font-normal text-neutral-500">({c.name_vi})</span></h3>
+                      <h3 className="font-bold text-lg">{c.name_en}</h3>
                       <button
                         onClick={() => {
                           setCity(c.id);
                           setShowCityInfoPopup(false);
                           setCityInfoSearchQuery("");
                         }}
-                        className="bg-black text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-neutral-800 transition-colors shrink-0 whitespace-nowrap"
+                        className="bg-black text-white p-2.5 rounded-full hover:bg-neutral-800 transition-colors shrink-0 flex items-center justify-center"
+                        title="Select this city"
                       >
-                        Select City
+                        <ChevronRight size={20} />
                       </button>
                     </div>
                     <p className="text-sm text-neutral-600 leading-relaxed">
