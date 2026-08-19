@@ -289,11 +289,25 @@ export default function NewItinerary() {
 
   const addToItinerary = (place: Place) => {
     setCandidates(candidates.filter(c => c.local_id !== place.local_id));
+    
+    let defaultStartTime = "";
+    let defaultEndTime = "";
+    const staySecs = place.suggested_stay_time_secs || 3600;
+
+    if (itineraryItems.length === 0) {
+      const paddedTime = time.length === 4 ? `0${time}` : time;
+      const start = new Date(`${date}T${paddedTime}`);
+      if (!isNaN(start.getTime())) {
+        defaultStartTime = start.toISOString();
+        defaultEndTime = new Date(start.getTime() + staySecs * 1000).toISOString();
+      }
+    }
+    
     setItineraryItems([...itineraryItems, { 
       ...place, 
-      start_time: "", 
-      end_time: "",
-      suggested_stay_time_secs: place.suggested_stay_time_secs || 3600 
+      start_time: defaultStartTime, 
+      end_time: defaultEndTime,
+      suggested_stay_time_secs: staySecs 
     }]);
     setHasUncalculatedChanges(true);
   };
