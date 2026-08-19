@@ -5,11 +5,12 @@ import { useRouter, useParams } from "next/navigation";
 import { ChevronLeft, Share, Trash2, MapPin, Bus, Footprints, Route } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Itinerary } from "@/lib/types";
+import { VIETNAM_CITIES } from "@/lib/cities";
 
 export default function ItineraryView() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const id = params?.id as string;
   const { itineraries, deleteItinerary, loadItinerary } = useStore();
   const user = useStore(state => state.user);
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
@@ -30,6 +31,13 @@ export default function ItineraryView() {
         });
     }
   }, [id, itineraries, user, loadItinerary]);
+
+  const getCategoryLabel = (cityId: string, categoryId: string) => {
+    const city = VIETNAM_CITIES.find(c => c.id === cityId);
+    if (!city) return categoryId;
+    const placeType = city.place_types?.find(pt => pt.id === categoryId);
+    return placeType ? placeType.en : categoryId;
+  };
 
   if (!itinerary) {
     return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
@@ -71,9 +79,9 @@ export default function ItineraryView() {
           href={linkHref}
           target="_blank"
           rel="noopener noreferrer"
-          className={`px-3 py-1.5 border border-neutral-300 rounded-lg bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center gap-2 transition-colors shadow-sm self-start ${additionalClass}`}
+          className={`px-3 py-1.5 border border-blue-600 rounded-lg bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-start ${additionalClass}`}
         >
-          <Route size={16} className="text-neutral-500" />
+          <Route size={16} className="text-blue-600" />
           Get directions
         </a>
       );
@@ -173,9 +181,9 @@ export default function ItineraryView() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&travelmode=${itinerary.transport === 'CAR' ? 'driving' : itinerary.transport === 'BUS' ? 'transit' : 'bicycling'}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-sm font-medium text-white flex items-center gap-2 transition-colors shadow-sm self-stretch sm:self-auto justify-center"
+                      className="px-4 py-2 rounded-lg border border-blue-600 bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-stretch sm:self-auto justify-center"
                     >
-                      <Route size={16} className="text-white" />
+                      <Route size={16} className="text-blue-600" />
                       Get directions
                     </a>
                   </div>
@@ -196,7 +204,7 @@ export default function ItineraryView() {
 
                   <div className="flex items-center gap-2 mb-4 flex-wrap text-xs font-medium text-neutral-500">
                     <span className="uppercase tracking-wider">
-                      {item.category}
+                      {getCategoryLabel(itinerary.City, item.category)}
                     </span>
                     <span>•</span>
                     <span className="uppercase tracking-wider">
@@ -227,9 +235,9 @@ export default function ItineraryView() {
                     href={`https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&destination=${encodeURIComponent(formatAddressForMaps(itinerary.items[idx+1].name, itinerary.items[idx+1].address))}&travelmode=${itinerary.transport === 'CAR' ? 'driving' : 'bicycling'}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-3 py-1.5 border border-neutral-300 rounded-lg bg-white hover:bg-neutral-50 text-sm font-medium text-neutral-700 flex items-center gap-2 transition-colors shadow-sm self-start"
+                    className="px-3 py-1.5 border border-blue-600 rounded-lg bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-start"
                   >
-                    <Route size={16} className="text-neutral-500" />
+                    <Route size={16} className="text-blue-600" />
                     Get directions
                   </a>
                 </div>

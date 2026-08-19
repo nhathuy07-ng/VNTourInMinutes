@@ -32,13 +32,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (authResolved && _hasHydrated) {
        const user = auth.currentUser;
        // If not logged in and not guest, redirect to sign in
-       if (!user && !isGuest && !pathname.startsWith('/view/sign_in') && pathname !== '/') {
+       if (!user && !isGuest && pathname && !pathname.startsWith('/view/sign_in') && pathname !== '/') {
            router.push('/view/sign_in');
        }
     }
   }, [authResolved, _hasHydrated, isGuest, pathname, router]);
 
-  const isRouting = authResolved && _hasHydrated && !auth.currentUser && !isGuest && !pathname.startsWith('/view/sign_in') && pathname !== '/';
+  const isRouting = authResolved && _hasHydrated && !auth.currentUser && !isGuest && pathname && !pathname.startsWith('/view/sign_in') && pathname !== '/';
   const showLoader = !authResolved || !_hasHydrated || isRouting;
 
   return (

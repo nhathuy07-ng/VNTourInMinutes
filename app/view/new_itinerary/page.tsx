@@ -8,19 +8,6 @@ import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
 import { VIETNAM_CITIES } from "@/lib/cities";
 
-const CATEGORIES = [
-  { id: "tourist_attraction", label: "Tourist Attraction" },
-  { id: "museum", label: "Museum" },
-  { id: "park", label: "Park" },
-  { id: "historical_landmark", label: "Historical Landmark" },
-  { id: "restaurant", label: "Restaurant" },
-  { id: "cafe", label: "Cafe" },
-  { id: "shopping_mall", label: "Shopping Mall" },
-  { id: "amusement_park", label: "Amusement Park" },
-  { id: "place_of_worship", label: "Place of Worship" },
-  { id: "art_gallery", label: "Art Gallery" },
-];
-
 export default function NewItinerary() {
   const router = useRouter();
   const { addItinerary } = useStore();
@@ -105,6 +92,13 @@ export default function NewItinerary() {
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
   const hasTimeWarnings = itineraryItems.some(isPlaceClosed);
   
+  const getCategoryLabel = (cityId: string, categoryId: string) => {
+    const cityData = VIETNAM_CITIES.find(c => c.id === cityId);
+    if (!cityData) return categoryId;
+    const placeType = cityData.place_types?.find(pt => pt.id === categoryId);
+    return placeType ? placeType.en : categoryId;
+  };
+
   const [editingStayTimeIdx, setEditingStayTimeIdx] = useState<number | null>(null);
   const [newStayTimeMins, setNewStayTimeMins] = useState<string>("");
 
@@ -370,7 +364,7 @@ export default function NewItinerary() {
               </div>
               <button 
                 onClick={() => setShowCityInfoPopup(true)} 
-                className="flex items-center gap-1 bg-neutral-100 text-neutral-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-neutral-200 transition-colors"
+                className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
               >
                 <Info size={14} /> ABOUT CITIES
               </button>
@@ -407,6 +401,7 @@ export default function NewItinerary() {
                         className="px-4 py-3 hover:bg-neutral-50 cursor-pointer text-sm border-b border-neutral-50 last:border-0"
                         onClick={() => {
                            setCity(c.id);
+                           setSelectedCategories([]);
                            setIsCityDropdownOpen(false);
                            setCitySearchQuery("");
                         }}
@@ -449,27 +444,31 @@ export default function NewItinerary() {
             
             <div className="space-y-6">
               <div>
-                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Activities</label>
+                <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Places</label>
                 <div className="flex flex-wrap gap-2">
-                  {CATEGORIES.map(cat => (
-                    <button
-                      key={cat.id}
-                      onClick={() => {
-                        if (selectedCategories.includes(cat.id)) {
-                          setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
-                        } else {
-                          setSelectedCategories([...selectedCategories, cat.id]);
-                        }
-                      }}
-                      className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
-                        selectedCategories.includes(cat.id) 
-                          ? "border-black bg-black text-white shadow-sm" 
-                          : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
-                      }`}
-                    >
-                      {cat.label}
-                    </button>
-                  ))}
+                  {city ? (
+                    VIETNAM_CITIES.find(c => c.id === city)?.place_types?.map(cat => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          if (selectedCategories.includes(cat.id)) {
+                            setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
+                          } else {
+                            setSelectedCategories([...selectedCategories, cat.id]);
+                          }
+                        }}
+                        className={`px-4 py-2 rounded-lg text-sm font-semibold border transition-all ${
+                          selectedCategories.includes(cat.id) 
+                            ? "border-black bg-black text-white shadow-sm" 
+                            : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                        }`}
+                      >
+                        {cat.en}
+                      </button>
+                    ))
+                  ) : (
+                    <span className="text-sm text-neutral-500">Please select a city first to view available places.</span>
+                  )}
                 </div>
               </div>
 
@@ -710,7 +709,7 @@ export default function NewItinerary() {
                           <Plus size={14} />
                         </button>
                       </div>
-                      <p className="text-xs text-neutral-500 truncate mt-1">{c.category} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
+                      <p className="text-xs text-neutral-500 truncate mt-1">{getCategoryLabel(city, c.category)} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
                       <div className="flex items-center gap-1.5 mt-1">
                         <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
                           <span>★</span>
