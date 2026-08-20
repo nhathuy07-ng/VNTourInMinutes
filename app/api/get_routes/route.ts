@@ -29,6 +29,8 @@ export async function POST(req: NextRequest) {
 
     const mapping: Record<string, { duration: number, instruction?: string }> = {};
 
+    const getKey = (pt: any) => pt.coords || pt.address || pt.name;
+
     if (mode === "TRANSIT") {
       const promises = [];
       for (let i = 0; i < pts.length - 1; i++) {
@@ -86,7 +88,7 @@ export async function POST(req: NextRequest) {
       
       const results = await Promise.all(promises);
       for (let i = 0; i < pts.length - 1; i++) {
-        mapping[`${pts[i].coords}_${pts[i+1].coords}`] = results[i];
+        mapping[`${getKey(pts[i])}_${getKey(pts[i+1])}`] = results[i];
       }
       
       return NextResponse.json(mapping);
@@ -96,9 +98,12 @@ export async function POST(req: NextRequest) {
     const origin = { address: `${pts[0].name}, ${pts[0].address}` };
     const destination = { address: `${pts[pts.length - 1].name}, ${pts[pts.length - 1].address}` };
     
-    const intermediates = pts.slice(1, -1).map((pt: any) => 
-      ({ location: { latLng: { latitude: parseFloat(pt.coords.split(",")[0]), longitude: parseFloat(pt.coords.split(",")[1]) } } })
-    );
+    const intermediates = pts.slice(1, -1).map((pt: any) => {
+      if (pt.coords && pt.coords.trim() !== "") {
+        return { location: { latLng: { latitude: parseFloat(pt.coords.split(",")[0]), longitude: parseFloat(pt.coords.split(",")[1]) } } };
+      }
+      return { address: `${pt.name}, ${pt.address}` };
+    });
 
     const response = await fetch("https://routes.googleapis.com/directions/v2:computeRoutes", {
       method: "POST",
@@ -127,7 +132,7 @@ export async function POST(req: NextRequest) {
     for (let i = 0; i < pts.length - 1; i++) {
       const durationStr = legs[i]?.duration || "1800s";
       const secs = parseInt(durationStr.replace("s", ""), 10);
-      mapping[`${pts[i].coords}_${pts[i+1].coords}`] = { duration: secs, instruction: "" };
+      mapping[`${getKey(pts[i])}_${getKey(pts[i+1])}`] = { duration: secs, instruction: "" };
     }
 
     return NextResponse.json(mapping);

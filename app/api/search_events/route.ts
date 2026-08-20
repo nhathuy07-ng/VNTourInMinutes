@@ -17,7 +17,7 @@ function getAIClient() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, categories } = await req.json();
+    const { city, categories, monthFrom, monthTo } = await req.json();
     const ai = getAIClient();
     
     const systemInstruction = `You are an event researcher finding upcoming events in Vietnam. 
@@ -27,7 +27,6 @@ Format your response as an array of objects matching this schema:
   {
     "name": "Name of the event",
     "description": "A brief description",
-    "source_url": "URL to the source",
     "participations": [
       {
         "date": 1717200000000, 
@@ -42,7 +41,14 @@ Format your response as an array of objects matching this schema:
 For the "date" field in "participations", use a Unix timestamp in milliseconds representing the day of the event.
 CRITICAL: For "address_line", DO NOT return vague phrases like "Various locations across ${city}". You MUST provide a specific, physical venue name, building, or street address. If an event is city-wide (like a festival), identify the main venue, opening ceremony location, or primary central gathering spot.`;
 
-    const prompt = `Find upcoming events or festivals in ${city}, Vietnam that fit these categories: ${categories.join(", ")}. Prioritize Vietnam National Tourism Authority's sources and other official news sources. Return a list of events. Make sure to include a valid source_url for each event.`;
+    let timeConstraint = "upcoming";
+    if (monthFrom || monthTo) {
+      const fromStr = monthFrom ? `from ${monthFrom}` : "";
+      const toStr = monthTo ? `to ${monthTo}` : "";
+      timeConstraint = `happening ${fromStr} ${toStr}`.trim();
+    }
+
+    const prompt = `Find ${timeConstraint} events or festivals in ${city}, Vietnam that fit these categories: ${categories.join(", ")}. Prioritize Vietnam National Tourism Authority's sources and other official news sources. Return a list of events.`;
     
     console.log("response start")
 
@@ -73,18 +79,12 @@ CRITICAL: For "address_line", DO NOT return vague phrases like "Various location
       console.error("Failed to parse events JSON", e);
     }
     
-    // Fallback if source_url is missing but we have groundingChunks
+    // Extract web sources from grounding metadata
     const chunks = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
     const webChunks = chunks.map((chunk: any) => chunk.web?.uri).filter(Boolean);
-    
-    if (webChunks.length > 0) {
-      events = events.map((event: any) => ({
-        ...event,
-        source_url: event.source_url || webChunks[0]
-      }));
-    }
+    const global_sources = [...new Set(webChunks)]; // unique URLs
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ events, global_sources });
   } catch (err: any) {
     console.error(err);
     return NextResponse.json({ message: "Failed to search events", error: err?.message || String(err) }, { status: 500 });

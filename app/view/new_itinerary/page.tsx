@@ -410,7 +410,7 @@ export default function NewItinerary() {
                            setCitySearchQuery("");
                         }}
                       >
-                        <span className="font-semibold">{c.name_en}</span> <span className="text-neutral-500 text-xs ml-1">({c.name_vi})</span>
+                        <span className="font-semibold">{c.name_en}</span>
                       </div>
                     ))}
                     {VIETNAM_CITIES.filter(c => 
