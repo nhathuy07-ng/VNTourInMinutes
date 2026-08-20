@@ -118,15 +118,15 @@ export default function MainView() {
                 <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{upcomingOrTodayTitle}</h2>
                 <Link 
                   href={`/view/itinerary/${upcoming.id}`}
-                  className="block bg-black text-white rounded-xl p-4 cursor-pointer hover:bg-neutral-900 transition-colors"
+                  className="block bg-blue-50 border border-blue-200 text-blue-800 rounded-xl p-4 cursor-pointer hover:bg-blue-100 transition-colors"
                 >
                   <div className="mb-2">
-                    <span className="inline-flex items-center px-2 py-1 bg-neutral-800 text-neutral-300 rounded text-xs font-semibold uppercase tracking-wider">
+                    <span className="inline-flex items-center px-2 py-1 bg-white text-blue-500 shadow-sm border border-blue-200 rounded text-xs font-semibold uppercase tracking-wider">
                       {new Date(upcoming.Start_DateTime).toLocaleDateString()}
                     </span>
                   </div>
                   <h3 className="text-base font-bold mb-0.5">{upcoming.name}</h3>
-                  <p className="text-xs text-neutral-400">{upcoming.City}</p>
+                  <p className="text-xs text-blue-600">{upcoming.City}</p>
                 </Link>
               </div>
             )}

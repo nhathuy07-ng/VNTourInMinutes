@@ -3726,3 +3726,13 @@ export const GENERIC_PLACE_TYPES = [
   { id: "convenience_stores", en: "Convenience Stores", vi: "Cửa hàng tiện lợi" },
   { id: "observation_decks", en: "Observation Decks", vi: "Đài quan sát" }
 ];
+
+export const getCategoryLabel = (cityId: string, categoryId: string) => {
+  const city = VIETNAM_CITIES.find(c => c.id === cityId);
+  if (city) {
+    const cat = city.place_types.find(p => p.id === categoryId);
+    if (cat) return cat.en;
+  }
+  const genericCat = GENERIC_PLACE_TYPES.find(p => p.id === categoryId);
+  return genericCat ? genericCat.en : categoryId;
+};

@@ -1,11 +1,11 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, MapPin, Search, Calendar, ExternalLink, Loader2, Info, X, CheckCircle2, Share, AlertTriangle, ArrowDown, Clock, Settings, Bus, Car, Bike, ArrowUp, Trash2, Edit2 } from "lucide-react";
+import { ChevronLeft, CheckCircle2, ArrowRight, Loader2, MapPin, Search, Calendar, Map, Check, Share, ExternalLink, X, Plus, AlertTriangle, Car, Bus, Bike, Ticket, Edit2, Trash2, Info } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
-import { VIETNAM_CITIES } from "@/lib/cities";
+import { VIETNAM_CITIES, GENERIC_PLACE_TYPES, getCategoryLabel } from "@/lib/cities";
 
 const EVENT_CATEGORIES = [
   "Sports Events",
@@ -47,9 +47,19 @@ export default function NewEventItinerary() {
   const [events, setEvents] = useState<EventItem[]>([]);
   const [selectedParticipationIds, setSelectedParticipationIds] = useState<string[]>([]);
   const [globalSources, setGlobalSources] = useState<string[]>([]);
+
+  const [prefChildrenFriendly, setPrefChildrenFriendly] = useState(false);
+  const [prefAccessible, setPrefAccessible] = useState(false);
+  const [prefLesserKnown, setPrefLesserKnown] = useState(false);
+  const [showMorePlaces, setShowMorePlaces] = useState(false);
+  const [candidates, setCandidates] = useState<Place[]>([]);
+  const [introduction, setIntroduction] = useState("");
+  const [showInfoPopup, setShowInfoPopup] = useState(false);
+  const [selectedPlaceCategories, setSelectedPlaceCategories] = useState<string[]>([]);
+
   const { addItinerary } = useStore();
   
-  // Step 4 state
+  // Step 5 state
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
   const [date, setDate] = useState("");
   const [time, setTime] = useState("08:00");
@@ -345,9 +355,42 @@ export default function NewEventItinerary() {
     return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
+  
+  const addToItinerary = (place: Place) => {
+    setCandidates(candidates.filter(c => c.local_id !== place.local_id));
+    
+    let defaultStartTime = "";
+    let defaultEndTime = "";
+    const staySecs = place.suggested_stay_time_secs || 3600;
+
+    if (itineraryItems.length === 0) {
+      const paddedTime = time.length === 4 ? "0" + time : time;
+      const start = new Date(date + "T" + paddedTime);
+      if (!isNaN(start.getTime())) {
+        defaultStartTime = start.toISOString();
+        defaultEndTime = new Date(start.getTime() + staySecs * 1000).toISOString();
+      }
+    }
+    
+    const newItem = {
+      ...place,
+      start_time: defaultStartTime,
+      end_time: defaultEndTime
+    } as ItineraryItem;
+    
+    const newItems = [...itineraryItems, newItem];
+    setItineraryItems(newItems);
+    
+    if (itineraryItems.length > 0) {
+      setHasUncalculatedChanges(true);
+    }
+  };
+
   const removeFromItinerary = (index: number) => {
+    const item = itineraryItems[index];
     const newItems = [...itineraryItems];
     newItems.splice(index, 1);
+    if (item.category !== "Event") { setCandidates([item, ...candidates]); }
     if (newItems.length === 1) {
        setItineraryItems(recalculateLocal(newItems, date, time));
        setHasUncalculatedChanges(false);
@@ -389,8 +432,32 @@ export default function NewEventItinerary() {
     router.push("/view/main");
   };
   function checkEventTiming(item: ItineraryItem) {
-    if (!item.opening_time || !item.start_time || !item.end_time || item.category !== "Event") return null;
+    if (!item.opening_time || !item.start_time || !item.end_time) return null;
+    
+    const lower = item.opening_time.toLowerCase();
+    const is24Hours = lower.includes("24 hours") || lower.includes("24/7");
+
     const match = item.opening_time.match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+    
+    if (item.category !== "Event") {
+      if (is24Hours) return null;
+      if (!match) return null;
+      const [_, open, close] = match;
+      const parseTime = (t: string) => {
+        const [h, m] = t.split(':').map(Number);
+        return h * 60 + m;
+      };
+      const openMins = parseTime(open);
+      const closeMins = parseTime(close) < openMins ? parseTime(close) + 24 * 60 : parseTime(close);
+      const startMins = new Date(item.start_time).getHours() * 60 + new Date(item.start_time).getMinutes();
+      const endMins = new Date(item.end_time).getHours() * 60 + new Date(item.end_time).getMinutes();
+      
+      if (startMins < openMins || endMins > closeMins) {
+        return { isWarning: true, msg: `Outside opening hours (${item.opening_time})` };
+      }
+      return null;
+    }
+
     if (!match) return null;
     
     const [_, open, close] = match;
@@ -504,7 +571,7 @@ export default function NewEventItinerary() {
                       >
                         <span className="font-medium block">{c.name_en}</span>
                       </div>
-                    ))}
+                  ))}
                   </div>
                 </div>
               )}
@@ -794,13 +861,13 @@ export default function NewEventItinerary() {
           <p className="text-neutral-500 mb-8">Explore {VIETNAM_CITIES.find(c => c.id === city)?.name_en || city} at your own pace.</p>
           <div className="flex flex-col gap-4">
             <button 
-              disabled
-              className="py-4 px-6 bg-black text-white font-semibold rounded-lg flex items-center justify-center gap-2 opacity-50 cursor-not-allowed"
+              onClick={() => setStep(4)}
+              className="py-4 px-6 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors"
             >
               Yes
             </button>
             <button 
-              onClick={() => setStep(4)}
+              onClick={() => setStep(5)}
               className="py-4 px-6 bg-neutral-100 text-neutral-900 font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
             >
               No
@@ -811,11 +878,199 @@ export default function NewEventItinerary() {
     );
   }
 
+  
+  const handleFindPlaces = async () => {
+    if (selectedPlaceCategories.length === 0) {
+      setStep(5);
+      return;
+    }
+    setIsLoading(true);
+    setErrorMsg("");
+    try {
+      const paddedTime = time.length === 4 ? "0" + time : time;
+      const d = date || new Date().toISOString().split('T')[0];
+      const datetime = new Date(d + "T" + paddedTime).toISOString();
+      const res = await fetch("/api/get_places", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          city: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
+          datetime,
+          place_types: selectedPlaceCategories.map(catId => getCategoryLabel(city, catId)),
+          pref_children_friendly: prefChildrenFriendly,
+          pref_accessible: prefAccessible,
+          lesser_known: prefLesserKnown,
+          transport
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.message || "Failed to find places.");
+        return;
+      }
+      const loadedCandidates = data.candidates || [];
+      setCandidates(loadedCandidates.map((c: any, i: number) => ({ ...c, local_id: "cand-" + i })));
+      setIntroduction(data.introduction || "");
+      setStep(5);
+    } catch (e) {
+      console.error(e);
+      setErrorMsg("Network error. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   if (step === 4) {
     return (
       <div className="h-[100dvh] bg-white text-neutral-900 flex flex-col font-sans overflow-hidden">
         <header className="h-16 px-4 flex items-center bg-white border-b border-neutral-100 shrink-0">
-          <button onClick={() => setStep(3)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
+          <button onClick={() => setStep(step === 5 ? 4 : 2)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
+            <ChevronLeft size={24} />
+          </button>
+          <div className="ml-2">
+            <h1 className="font-extrabold tracking-tight text-lg">Side Attractions</h1>
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-neutral-50/30 pb-32">
+          <div className="max-w-2xl mx-auto space-y-6">
+            {/* Interests & Details (No Date/City) */}
+            <div className="p-5 rounded-xl border border-neutral-200 bg-white shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs bg-black text-white">1</div>
+                <h3 className="text-base font-bold">Interests & Details</h3>
+              </div>
+              
+              <div className="space-y-6">
+                <div>
+                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Places</label>
+                  <div className="flex flex-wrap gap-2">
+                    {city ? (
+                      <>
+                        {VIETNAM_CITIES.find(c => c.id === city)?.place_types?.map(cat => (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              if (selectedPlaceCategories.includes(cat.id)) {
+                                setSelectedPlaceCategories(selectedPlaceCategories.filter(c => c !== cat.id));
+                              } else {
+                                setSelectedPlaceCategories([...selectedPlaceCategories, cat.id]);
+                              }
+                            }}
+                            className={"px-4 py-2 rounded-lg text-sm font-semibold border transition-all " + (
+                              selectedPlaceCategories.includes(cat.id) 
+                                ? "border-black bg-black text-white shadow-sm" 
+                                : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                            )}
+                          >
+                            {cat.en}
+                          </button>
+                        ))}
+                        
+                        {showMorePlaces && GENERIC_PLACE_TYPES.filter(
+                          cat => !VIETNAM_CITIES.find(c => c.id === city)?.place_types?.some(pt => pt.id === cat.id)
+                        ).map(cat => (
+                          <button
+                            key={cat.id}
+                            onClick={() => {
+                              if (selectedPlaceCategories.includes(cat.id)) {
+                                setSelectedPlaceCategories(selectedPlaceCategories.filter(c => c !== cat.id));
+                              } else {
+                                setSelectedPlaceCategories([...selectedPlaceCategories, cat.id]);
+                              }
+                            }}
+                            className={"px-4 py-2 rounded-lg text-sm font-semibold border transition-all " + (
+                              selectedPlaceCategories.includes(cat.id) 
+                                ? "border-black bg-black text-white shadow-sm" 
+                                : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
+                            )}
+                          >
+                            {cat.en}
+                          </button>
+                        ))}
+
+                        <button
+                          onClick={() => setShowMorePlaces(!showMorePlaces)}
+                          className="px-4 py-2 rounded-lg text-sm font-semibold border border-neutral-200 text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-all flex items-center gap-1"
+                        >
+                          {showMorePlaces ? "Show less" : "More places..."}
+                        </button>
+                      </>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-neutral-100">
+                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Preferences</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
+                      <div className={"w-5 h-5 rounded flex items-center justify-center " + (prefChildrenFriendly ? 'bg-black border-black' : 'border-2 border-neutral-300')}>
+                        {prefChildrenFriendly && <Check size={14} className="text-white" />}
+                      </div>
+                      <input type="checkbox" className="hidden" checked={prefChildrenFriendly} onChange={() => setPrefChildrenFriendly(!prefChildrenFriendly)} />
+                      <span className="font-semibold text-sm text-neutral-800">Child-friendly</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
+                      <div className={"w-5 h-5 rounded flex items-center justify-center " + (prefAccessible ? 'bg-black border-black' : 'border-2 border-neutral-300')}>
+                        {prefAccessible && <Check size={14} className="text-white" />}
+                      </div>
+                      <input type="checkbox" className="hidden" checked={prefAccessible} onChange={() => setPrefAccessible(!prefAccessible)} />
+                      <span className="font-semibold text-sm text-neutral-800">Accessible</span>
+                    </label>
+                    
+                    <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors sm:col-span-2">
+                      <div className={"w-5 h-5 rounded flex items-center justify-center " + (prefLesserKnown ? 'bg-black border-black' : 'border-2 border-neutral-300')}>
+                        {prefLesserKnown && <Check size={14} className="text-white" />}
+                      </div>
+                      <input type="checkbox" className="hidden" checked={prefLesserKnown} onChange={() => setPrefLesserKnown(!prefLesserKnown)} />
+                      <span className="font-semibold text-sm text-neutral-800">Lesser known places</span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-neutral-100">
+          <div className="max-w-2xl mx-auto flex flex-col gap-3">
+            {errorMsg && (
+              <div className="p-3 bg-red-50 text-red-600 rounded-md text-sm font-medium border border-red-100 text-center">
+                {errorMsg}
+              </div>
+            )}
+            <div className="flex items-center gap-3 w-full">
+              <button
+                 onClick={() => setStep(5)}
+                 className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+              >
+                Skip
+              </button>
+              <button
+                onClick={handleFindPlaces}
+                disabled={isLoading}
+                className="flex-[2] py-3 px-6 bg-black text-white rounded-md font-medium text-lg disabled:opacity-50 flex justify-center items-center gap-2 hover:bg-neutral-800 transition-colors"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="animate-spin" size={20} />
+                    Finding...
+                  </>
+                ) : "Next Step"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === 5) {
+    return (
+      <div className="h-[100dvh] bg-white text-neutral-900 flex flex-col font-sans overflow-hidden">
+        <header className="h-16 px-4 flex items-center bg-white border-b border-neutral-100 shrink-0">
+          <button onClick={() => setStep(step === 5 ? 4 : 2)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">
@@ -853,7 +1108,7 @@ export default function NewEventItinerary() {
                         <button onClick={() => moveItem(idx, 1)} disabled={idx === itineraryItems.length - 1} className="hover:text-black"><ChevronLeft className="-rotate-90" size={20} /></button>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-bold text-base leading-tight truncate">{item.name}</h3>
+                        <h3 className="font-bold text-base leading-tight truncate flex items-center gap-2">{item.category === "Event" && <Ticket className="text-red-500 shrink-0" size={16} />}{item.name}</h3>
                         <div className={`flex justify-between mt-2 text-sm font-medium ${isClosed ? "text-yellow-800" : "text-neutral-600"}`}>
                           <span className={`px-2 py-1 rounded border ${isClosed ? "bg-yellow-100/50 border-yellow-200" : "bg-white border-neutral-200"}`}>{formatTime(item.start_time)} - {formatTime(item.end_time)}</span>
                           <button 
@@ -867,7 +1122,7 @@ export default function NewEventItinerary() {
 
                         {evtTiming?.isWarning && (
                           <div className="mt-2 text-xs font-semibold text-yellow-700">
-                            Warning: You arrive late. Please check the event&apos;s policy regarding late check-ins.
+                            {evtTiming.msg || "Warning: You arrive late. Please check the event's policy regarding late check-ins."}
                           </div>
                         )}
                         {evtTiming?.nudgeEarlyArrive && !evtTiming.isWarning && (
@@ -886,38 +1141,58 @@ export default function NewEventItinerary() {
                       </button>
                     </div>
                     
-                    {item.transit_instruction && idx < itineraryItems.length - 1 && (
-                      <div className="flex ml-8 pl-4 py-1 border-l-2 border-dashed border-neutral-200 relative">
-                        <div className="absolute -left-[9px] top-1/2 -translate-y-1/2 bg-white rounded-full p-0.5 border-2 border-neutral-200">
-                          {transport === "CAR" ? <Car size={10} className="text-neutral-400" /> : transport === "BUS" ? <Bus size={10} className="text-neutral-400" /> : <Bike size={10} className="text-neutral-400" />}
-                        </div>
-                        <div className="bg-neutral-50 rounded p-2 text-xs text-neutral-600 flex-1 ml-4 border border-neutral-100">
-                          {(() => {
-                            try {
-                              const instr = JSON.parse(item.transit_instruction);
-                              if (Array.isArray(instr)) {
-                                return instr.map((step, i) => (
-                                  <div key={i} className="mb-1 last:mb-0">
-                                    <span className="font-semibold text-neutral-800">{step.line || step.instruction}</span>
-                                    {step.departure && <span>: {step.departure} → {step.arrival} {step.stops}</span>}
-                                  </div>
-                                ));
-                              }
-                            } catch (e) {
-                               // ignore
-                            }
-                            return <span>{Math.round(parseInt(item.transit_instruction) / 60) || 30} mins {transport.toLowerCase()} ride</span>;
-                          })()}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}
             </div>
           </div>
           
-          <div className="bg-white border-t border-neutral-100 shrink-0 shadow-[0_-10px_20px_rgba(0,0,0,0.03)] z-10">
+                 {/* Suggestions & Bottom controls Combined */}
+          <div className="shrink-0 flex flex-col bg-white border-t border-neutral-200 z-10 shadow-[0_-4px_15px_-5px_rgba(0,0,0,0.05)]">
+            {candidates.length > 0 && (
+              <div className="p-4 pb-2">
+                <div className="flex justify-between items-center mb-3 px-1">
+                  <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Suggestions</h2>
+                  <button 
+                    onClick={() => setShowInfoPopup(true)} 
+                    className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
+                  >
+                    <Info size={14} /> INFO
+                  </button>
+                </div>
+                <div className="flex overflow-x-scroll gap-4 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  {candidates.map((c, idx) => (
+                    <div key={c.local_id || "candidate-" + idx} className="bg-white border border-neutral-200 rounded-xl p-3 flex flex-col gap-2 min-w-[260px] w-[260px] snap-start shrink-0 shadow-sm">
+                      <div className="flex flex-col gap-0.5 w-full">
+                        <div className="flex items-start justify-between gap-3 w-full">
+                          <h3 className="font-semibold text-sm flex-1 line-clamp-2 mt-1">{c.name}</h3>
+                          <button 
+                            onClick={() => addToItinerary(c)}
+                            disabled={itineraryItems.length >= 10}
+                            className="py-2 px-3 bg-black text-white rounded-md hover:bg-neutral-800 disabled:opacity-50 shrink-0 flex items-center justify-center"
+                          >
+                            <Plus size={14} />
+                          </button>
+                        </div>
+                        <p className="text-xs text-neutral-500 truncate mt-1">{getCategoryLabel(city, c.category)} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
+                        <div className="flex items-center gap-1.5 mt-1">
+                          <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
+                            <span>★</span>
+                            <span className="text-neutral-900">{c.rating}</span>
+                            <span>({c.rate_count})</span>
+                          </div>
+                          {c.opening_time && (
+                            <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
+                              <span>{c.opening_time}</span>
+                            </div>
+                          )}
+                        </div>
+                    </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div className="p-4 space-y-3 shrink-0">
               <div className="flex gap-2">
                 {(["CAR", "BUS", "BIKE"] as const).map(t => (
@@ -952,6 +1227,31 @@ export default function NewEventItinerary() {
             </div>
           </div>
         </div>
+        
+        {showInfoPopup && (
+          <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+            <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
+              <div className="flex items-center justify-between p-4 border-b border-neutral-100">
+                <h2 className="font-bold text-lg">Places Information</h2>
+                <button onClick={() => setShowInfoPopup(false)} className="p-2 hover:bg-neutral-100 rounded-full">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="p-4 overflow-y-auto flex flex-col gap-6 flex-1">
+                {candidates.length === 0 ? (
+                  <p className="text-neutral-500 text-center py-8">No places available.</p>
+                ) : (
+                  candidates.map((c, idx) => (
+                    <div key={`info-${c.local_id || idx}`} className="flex flex-col gap-2 border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0">
+                      <h3 className="font-bold text-lg">{c.name}</h3>
+                      <p className="text-sm text-neutral-600 leading-relaxed">{c.introduction || "No description available."}</p>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Time Warning Popup */}
         {showTimeWarningPopup && (
@@ -970,7 +1270,7 @@ export default function NewEventItinerary() {
                   Cancel
                 </button>
                 <button 
-                  onClick={() => { setShowTimeWarningPopup(false); setStep(5); }} 
+                  onClick={() => { setShowTimeWarningPopup(false); setStep(6); }} 
                   className="flex-1 py-3 px-4 bg-black text-white font-medium rounded-md hover:bg-neutral-800 transition-colors"
                 >
                   Proceed
@@ -1017,7 +1317,7 @@ export default function NewEventItinerary() {
     );
   }
 
-  // Step 5: Save and Finish
+  // Step 6: Save and Finish
   return (
     <div className="min-h-screen bg-white text-neutral-900 flex flex-col items-center justify-center p-6 text-center font-sans">
       <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mb-6 text-white">
