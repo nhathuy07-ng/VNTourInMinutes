@@ -30,10 +30,7 @@ export async function POST(req: NextRequest) {
 
     const systemInstruction = JSON.stringify({
       persona: "travel planner",
-      city: `${city}, Vietnam`,
       task: "find at least 20 places",
-      place_categories: place_types,
-      constraints: constraints,
       response_type: "json (no markdown blocks, just the JSON string)",
       response_fields: {
         candidates: [
@@ -56,6 +53,9 @@ export async function POST(req: NextRequest) {
 
     const prompt = JSON.stringify({
       task: "find at least 20 places, day tour",
+      city: `${city}, Vietnam`,
+      place_categories: place_types,
+      constraints: constraints,
       tour_start: datetime
     }, null, 2);
 

@@ -447,11 +447,19 @@ export default function NewEventItinerary() {
         const [h, m] = t.split(':').map(Number);
         return h * 60 + m;
       };
-      const openMins = parseTime(open);
-      const closeMins = parseTime(close) < openMins ? parseTime(close) + 24 * 60 : parseTime(close);
-      const startMins = new Date(item.start_time).getHours() * 60 + new Date(item.start_time).getMinutes();
-      const endMins = new Date(item.end_time).getHours() * 60 + new Date(item.end_time).getMinutes();
+      let openMins = parseTime(open);
+      let closeMins = parseTime(close);
+      if (closeMins < openMins) closeMins += 24 * 60;
+
+      let startMins = new Date(item.start_time).getHours() * 60 + new Date(item.start_time).getMinutes();
+      let endMins = new Date(item.end_time).getHours() * 60 + new Date(item.end_time).getMinutes();
       
+      if (endMins < startMins) endMins += 24 * 60;
+      if (startMins < openMins) {
+        startMins += 24 * 60;
+        endMins += 24 * 60;
+      }
+
       if (startMins < openMins || endMins > closeMins) {
         return { isWarning: true, msg: `Outside opening hours (${item.opening_time})` };
       }
@@ -924,7 +932,7 @@ export default function NewEventItinerary() {
     return (
       <div className="h-[100dvh] bg-white text-neutral-900 flex flex-col font-sans overflow-hidden">
         <header className="h-16 px-4 flex items-center bg-white border-b border-neutral-100 shrink-0">
-          <button onClick={() => setStep(step === 5 ? 4 : 2)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
+          <button onClick={() => setStep(2)} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">

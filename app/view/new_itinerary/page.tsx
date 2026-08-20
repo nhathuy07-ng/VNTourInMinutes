@@ -68,26 +68,20 @@ export default function NewItinerary() {
       return h * 60 + m;
     };
     
-    const openMins = parseTime(open);
+    let openMins = parseTime(open);
     let closeMins = parseTime(close);
-    if (closeMins < openMins) closeMins += 24 * 60; // overnight
+    if (closeMins < openMins) closeMins += 24 * 60;
+
+    let startMins = new Date(item.start_time).getHours() * 60 + new Date(item.start_time).getMinutes();
+    let endMins = new Date(item.end_time).getHours() * 60 + new Date(item.end_time).getMinutes();
     
-    const startDate = new Date(item.start_time);
-    const endDate = new Date(item.end_time);
-    
-    const startMins = startDate.getHours() * 60 + startDate.getMinutes();
-    let endMins = endDate.getHours() * 60 + endDate.getMinutes();
     if (endMins < startMins) endMins += 24 * 60;
-    
-    // Adjust start/end to be relative to opening time if it crosses midnight
-    let adjustedStart = startMins;
-    let adjustedEnd = endMins;
-    if (adjustedStart < openMins && (adjustedStart + 24 * 60) <= closeMins) {
-      adjustedStart += 24 * 60;
-      adjustedEnd += 24 * 60;
+    if (startMins < openMins) {
+      startMins += 24 * 60;
+      endMins += 24 * 60;
     }
-    
-    return adjustedStart < openMins || adjustedEnd > closeMins;
+
+    return startMins < openMins || endMins > closeMins;
   };
   
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
