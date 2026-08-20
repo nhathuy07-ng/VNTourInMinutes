@@ -205,6 +205,10 @@ export default function NewEventItinerary() {
       const newDateStr = `${yyyy}-${mm}-${dd}`;
       setDate(newDateStr);
       
+      const cityName = VIETNAM_CITIES.find(c => c.id === city)?.name_en || city;
+      const formattedDate = new Date(`${newDateStr}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
+      setFinalName(`${cityName} trip, ${formattedDate}`);
+      
       const timeStart = events[parseInt(eI)].participations[parseInt(pI)].time_start;
       if (timeStart) {
         setTime(timeStart);
