@@ -42,10 +42,17 @@ For the "date" field in "participations", use a Unix timestamp in milliseconds r
 CRITICAL: For "address_line", DO NOT return vague phrases like "Various locations across ${city}". You MUST provide a specific, physical venue name, building, or street address. If an event is city-wide (like a festival), identify the main venue, opening ceremony location, or primary central gathering spot.`;
 
     let timeConstraint = "upcoming";
+    let minDateTs = 0;
     if (monthFrom || monthTo) {
       const fromStr = monthFrom ? `from ${monthFrom}` : "";
       const toStr = monthTo ? `to ${monthTo}` : "";
       timeConstraint = `happening ${fromStr} ${toStr}`.trim();
+    } else {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      tomorrow.setHours(0, 0, 0, 0);
+      minDateTs = tomorrow.getTime();
+      timeConstraint = `happening from ${tomorrow.toISOString().split('T')[0]} onwards`;
     }
 
     const prompt = `Find ${timeConstraint} events or festivals in ${city}, Vietnam that fit these categories: ${categories.join(", ")}. Prioritize Vietnam National Tourism Authority's sources and other official news sources. Return a list of events.`;
@@ -74,7 +81,19 @@ CRITICAL: For "address_line", DO NOT return vague phrases like "Various location
     
     let events = [];
     try {
-      events = JSON.parse(jsonText);
+      let parsedEvents = JSON.parse(jsonText);
+      if (Array.isArray(parsedEvents)) {
+        if (minDateTs > 0) {
+          events = parsedEvents.map((evt: any) => {
+             if (evt.participations && Array.isArray(evt.participations)) {
+               evt.participations = evt.participations.filter((p: any) => p.date >= minDateTs);
+             }
+             return evt;
+          }).filter((evt: any) => evt.participations && evt.participations.length > 0);
+        } else {
+          events = parsedEvents;
+        }
+      }
     } catch (e) {
       console.error("Failed to parse events JSON", e);
     }
