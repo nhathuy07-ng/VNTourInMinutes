@@ -12,6 +12,7 @@ export default function MainView() {
   const router = useRouter();
   const { itineraries, user, setUser, setItineraries } = useStore();
   const [showPastTours, setShowPastTours] = useState(false);
+  const [showModeChooser, setShowModeChooser] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const lastRefreshTime = useRef(0);
 
@@ -88,13 +89,13 @@ export default function MainView() {
               <p className="text-xl font-medium text-neutral-700 mb-8">No upcoming tours.</p>
               
               <div className="flex flex-col gap-4 w-full max-w-sm">
-                <Link
-                  href="/view/new_itinerary"
+                <button
+                  onClick={() => setShowModeChooser(true)}
                   className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
                 >
                   <Plus size={20} />
                   Plan your tour!
-                </Link>
+                </button>
               </div>
             </div>
             
@@ -169,12 +170,47 @@ export default function MainView() {
 
       {itineraries.length > 0 && (
         <div className="fixed bottom-6 right-6">
-          <Link
-            href="/view/new_itinerary"
+          <button
+            onClick={() => setShowModeChooser(true)}
             className="w-14 h-14 bg-black text-white rounded-md flex items-center justify-center shadow-lg hover:bg-neutral-800 transition-colors"
           >
             <Plus size={24} />
-          </Link>
+          </button>
+        </div>
+      )}
+
+      {/* Mode Chooser Popup */}
+      {showModeChooser && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-xl flex flex-col p-6">
+            <h2 className="font-bold text-xl mb-4 text-neutral-900">Choose Planning Mode</h2>
+            
+            <div className="flex flex-col gap-3 mb-6">
+              <button
+                onClick={() => router.push("/view/new_event_itinerary")}
+                className="flex flex-col text-left p-4 rounded-xl border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 bg-white transition-all"
+              >
+                <span className="font-semibold text-neutral-900 mb-1">Events + Side attractions</span>
+                <span className="text-sm text-neutral-500">Find events happening in this city and build a trip around them.</span>
+              </button>
+              <button
+                onClick={() => router.push("/view/new_itinerary")}
+                className="flex flex-col text-left p-4 rounded-xl border-2 border-neutral-200 hover:border-neutral-300 hover:bg-neutral-50 bg-white transition-all"
+              >
+                <span className="font-semibold text-neutral-900 mb-1">Attractions only</span>
+                <span className="text-sm text-neutral-500">Plan a classic itinerary with places to visit.</span>
+              </button>
+            </div>
+
+            <div className="flex items-center w-full">
+              <button 
+                onClick={() => setShowModeChooser(false)} 
+                className="w-full py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
