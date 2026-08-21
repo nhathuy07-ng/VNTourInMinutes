@@ -2,7 +2,7 @@
 
 import { useStore } from "@/lib/store";
 import { useRouter, useParams } from "next/navigation";
-import { ChevronLeft, Share, Trash2, MapPin, Bus, Footprints, Route } from "lucide-react";
+import { ChevronLeft, Share as _Share, Trash2, MapPin, Bus, Footprints, Route } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Itinerary } from "@/lib/types";
 import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
@@ -154,7 +154,8 @@ export default function ItineraryView() {
           <h1 className="font-extrabold tracking-tight text-lg">Tour Details</h1>
         </div>
         <div className="flex gap-2">
-          <button className="p-2 text-neutral-400 hover:text-black"><Share size={20} /></button>
+          {/* Share functionality is temporarily disabled/hidden */}
+          {/* <button className="p-2 text-neutral-400 hover:text-black"><Share size={20} /></button> */}
           <button onClick={handleDelete} className="p-2 text-neutral-400 hover:text-red-500"><Trash2 size={20} /></button>
         </div>
       </header>

@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, CheckCircle2, ArrowRight, Loader2, MapPin, Search, Calendar, Map, Check, Share, ExternalLink, X, Plus, AlertTriangle, Car, Bus, Bike, Ticket, Edit2, Trash2, Info } from "lucide-react";
+import { ChevronLeft, CheckCircle2, ArrowRight, Loader2, MapPin, Search, Calendar, Map, Check, Share as _Share, ExternalLink, X, Plus, AlertTriangle, Car, Bus, Bike, Ticket, Edit2, Trash2, Info } from "lucide-react";
 import { useStore } from "@/lib/store";
 import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
@@ -1348,12 +1348,13 @@ export default function NewEventItinerary() {
           Save and Finish
         </button>
         
-        <button
+        {/* Share functionality is temporarily disabled/hidden */}
+        {/* <button
           onClick={() => {}}
           className="w-full py-3 bg-white text-neutral-900 border border-neutral-200 rounded-md font-medium text-lg flex items-center justify-center gap-2 hover:bg-neutral-50 transition-colors"
         >
           <Share size={20} /> Export / Share
-        </button>
+        </button> */}
       </div>
     </div>
   );
