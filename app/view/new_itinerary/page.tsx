@@ -243,7 +243,7 @@ export default function NewItinerary() {
       const cityObj = VIETNAM_CITIES.find(c => c.id === city);
       const cityName = (language === 'vi' ? cityObj?.name_vi : cityObj?.name_en) || city;
       const formattedDate = new Date(date).toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US', { month: "long", day: "numeric" });
-      setFinalName(`${cityName} trip, ${formattedDate}`);
+      setFinalName(t("default_tour_name", { city: cityName, date: formattedDate }));
       setStep(3);
     }
   };

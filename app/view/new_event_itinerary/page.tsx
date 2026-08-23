@@ -231,7 +231,7 @@ export default function NewEventItinerary() {
       
       const cityName = (language === "vi" ? (VIETNAM_CITIES.find(c => c.id === city)?.name_vi || VIETNAM_CITIES.find(c => c.id === city)?.name_en) : VIETNAM_CITIES.find(c => c.id === city)?.name_en) || city;
       const formattedDate = new Date(`${newDateStr}T00:00:00`).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", { month: "long", day: "numeric" });
-      setFinalName(`${cityName} ${t("trip_suffix")}, ${formattedDate}`);
+      setFinalName(t("default_tour_name", { city: cityName, date: formattedDate }));
       
       const timeStart = events[parseInt(eI)].participations[parseInt(pI)].time_start;
       if (timeStart) {

@@ -111,13 +111,25 @@ export default function ItineraryView() {
                   <div className="flex flex-col gap-1 text-sm">
                     <div className="flex items-center gap-2 font-bold text-neutral-800">
                       <Bus size={32} className="text-blue-500" />
-                      <span>{t("take_line")} {data.line}</span>
+                      <span>
+                        {t("take_line")} {data.line || (data.headsign ? "" : t("transit"))}
+                        {data.headsign ? ` ${t("towards")} ${data.headsign}` : ""}
+                      </span>
                     </div>
                     <div className="text-neutral-500 ml-6 flex flex-wrap gap-1 items-center">
-                      <span>{data.departure}</span>
+                      <span>{data.departure || t("station")}</span>
                       <span>→</span>
-                      <span>{data.arrival}</span>
-                      <span className="font-semibold">{data.stops}</span>
+                      <span>{data.arrival || t("station")}</span>
+                      {(() => {
+                        const count = data.stopCount ?? data.stop_count;
+                        if (typeof count === "number" && count > 0) {
+                          return <span className="font-semibold">({count} {count === 1 ? t("stop") : t("stops")})</span>;
+                        }
+                        if (typeof data.stops === "string" && data.stops.trim().length > 0) {
+                          return <span className="font-semibold">{data.stops}</span>;
+                        }
+                        return null;
+                      })()}
                     </div>
                     {dataArr.length === 1 && renderLink("mt-1 ml-6")}
                   </div>

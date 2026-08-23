@@ -3,7 +3,7 @@
 import { useStore } from "@/lib/store";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Map, LogOut, RefreshCw, X } from "lucide-react";
+import { Plus, Map, LogOut, RefreshCw, X, Menu, Globe, MessageSquare, LogIn, ChevronRight, ChevronLeft, Check } from "lucide-react";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
 import { useState, useRef } from "react";
@@ -15,7 +15,10 @@ export default function MainView() {
   const { t, language, setLanguage } = useTranslation();
   const [showPastTours, setShowPastTours] = useState(false);
   const [showModeChooser, setShowModeChooser] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [menuView, setMenuView] = useState<"main" | "language">("main");
   const lastRefreshTime = useRef(0);
 
   const { loadFromFirestore } = useStore();
@@ -63,35 +66,127 @@ export default function MainView() {
           <h1 className="text-2xl font-extrabold tracking-tight">{t("your_tours")}</h1>
           {user && <p className="text-sm text-neutral-500">{t("signed_in_as")} {user.email}</p>}
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center border border-neutral-200 rounded-md overflow-hidden text-xs font-bold">
-            <button
-              onClick={() => setLanguage("en")}
-              className={`px-3 py-1.5 min-h-[38px] min-w-[38px] transition-colors ${language === "en" ? "bg-black text-white" : "bg-white text-neutral-600 hover:bg-neutral-100"}`}
-            >
-              EN
-            </button>
-            <button
-              onClick={() => setLanguage("vi")}
-              className={`px-3 py-1.5 min-h-[38px] min-w-[38px] transition-colors ${language === "vi" ? "bg-black text-white" : "bg-white text-neutral-600 hover:bg-neutral-100"}`}
-            >
-              VI
-            </button>
-          </div>
+        <div className="relative">
+          <button
+            onClick={() => {
+              setIsMenuOpen(!isMenuOpen);
+              setMenuView("main");
+            }}
+            className="p-2 min-h-[44px] min-w-[44px] flex items-center justify-center text-neutral-800 hover:text-black hover:bg-neutral-100 border border-neutral-200 rounded-md transition-colors"
+            aria-label={t("menu")}
+          >
+            <Menu size={22} />
+          </button>
 
-          {user ? (
-            <div className="flex items-center gap-1">
-              <button onClick={handleRefresh} disabled={isRefreshing} className="p-2 text-neutral-400 hover:text-black transition-colors disabled:opacity-50 min-h-[40px] min-w-[40px] flex items-center justify-center">
-                <RefreshCw size={20} className={isRefreshing ? "animate-spin" : ""} />
-              </button>
-              <button onClick={handleSignOut} className="p-2 text-neutral-400 hover:text-black transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center">
-                <LogOut size={20} />
-              </button>
-            </div>
-          ) : (
-            <Link href="/view/sign_in" className="px-4 py-2 bg-black text-white rounded-md font-medium text-sm hover:bg-neutral-800 flex items-center justify-center min-h-[38px]">
-              {t("sign_in_btn")}
-            </Link>
+          {isMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  setMenuView("main");
+                }}
+              />
+              <div className="absolute right-0 top-12 mt-2 w-60 bg-white border border-neutral-200 rounded-xl p-1.5 z-30 flex flex-col gap-1">
+                {menuView === "main" ? (
+                  <>
+                    <button
+                      onClick={() => {
+                        handleRefresh();
+                      }}
+                      disabled={!user || isRefreshing}
+                      className="min-h-[44px] w-full flex items-center gap-3 px-3 py-2 text-neutral-800 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg transition-colors text-left text-sm font-medium disabled:opacity-50"
+                    >
+                      <RefreshCw size={18} className={`text-neutral-500 ${isRefreshing ? "animate-spin text-black" : ""}`} />
+                      <span>{t("refresh")}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setMenuView("language")}
+                      className="min-h-[44px] w-full flex items-center justify-between px-3 py-2 text-neutral-800 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg transition-colors text-left text-sm font-medium"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Globe size={18} className="text-neutral-500" />
+                        <span>{t("language")}</span>
+                      </div>
+                      <div className="flex items-center gap-1 text-xs text-neutral-500 font-semibold">
+                        <span>{language === "vi" ? "Tiếng Việt" : "English"}</span>
+                        <ChevronRight size={16} className="text-neutral-400" />
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setIsMenuOpen(false);
+                        setShowFeedback(true);
+                      }}
+                      className="min-h-[44px] w-full flex items-center gap-3 px-3 py-2 text-neutral-800 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg transition-colors text-left text-sm font-medium"
+                    >
+                      <MessageSquare size={18} className="text-neutral-500" />
+                      <span>{t("feedback")}</span>
+                    </button>
+
+                    <div className="border-t border-neutral-100 my-1" />
+
+                    {user ? (
+                      <button
+                        onClick={() => {
+                          setIsMenuOpen(false);
+                          handleSignOut();
+                        }}
+                        className="min-h-[44px] w-full flex items-center gap-3 px-3 py-2 text-neutral-800 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg transition-colors text-left text-sm font-medium"
+                      >
+                        <LogOut size={18} className="text-neutral-500" />
+                        <span>{t("sign_out")}</span>
+                      </button>
+                    ) : (
+                      <Link
+                        href="/view/sign_in"
+                        onClick={() => setIsMenuOpen(false)}
+                        className="min-h-[44px] w-full flex items-center gap-3 px-3 py-2 text-neutral-800 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg transition-colors text-left text-sm font-medium"
+                      >
+                        <LogIn size={18} className="text-neutral-500" />
+                        <span>{t("sign_in_btn")}</span>
+                      </Link>
+                    )}
+                  </>
+                ) : (
+                  <div className="flex flex-col gap-1">
+                    <button
+                      onClick={() => setMenuView("main")}
+                      className="min-h-[40px] w-full flex items-center gap-2 px-2 py-1.5 text-neutral-600 hover:text-black font-semibold text-xs border-b border-neutral-100 mb-1"
+                    >
+                      <ChevronLeft size={16} />
+                      <span>{t("language")}</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setLanguage("en");
+                        setMenuView("main");
+                        setIsMenuOpen(false);
+                      }}
+                      className="min-h-[44px] w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg text-left text-sm font-medium transition-colors"
+                    >
+                      <span>English</span>
+                      {language === "en" && <Check size={16} className="text-black" />}
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        setLanguage("vi");
+                        setMenuView("main");
+                        setIsMenuOpen(false);
+                      }}
+                      className="min-h-[44px] w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg text-left text-sm font-medium transition-colors"
+                    >
+                      <span>Tiếng Việt</span>
+                      {language === "vi" && <Check size={16} className="text-black" />}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </>
           )}
         </div>
       </header>
@@ -263,6 +358,38 @@ export default function MainView() {
                   </Link>
                 ))}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Feedback Modal */}
+      {showFeedback && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-2 sm:p-4">
+          <div className="bg-white w-full max-w-[640px] h-[667px] max-h-[90vh] rounded-2xl shadow-xl flex flex-col overflow-hidden border border-neutral-200">
+            <div className="p-3 sm:p-4 border-b border-neutral-100 flex justify-between items-center shrink-0">
+              <h2 className="font-bold text-lg text-neutral-900">{t("feedback")}</h2>
+              <button 
+                onClick={() => setShowFeedback(false)}
+                className="p-2 text-neutral-400 hover:text-black hover:bg-neutral-100 rounded-full transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
+                aria-label="Close feedback"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="flex-1 w-full h-full relative overflow-hidden bg-neutral-50">
+              <iframe
+                src="https://docs.google.com/forms/d/e/1FAIpQLSewk3qsl-OZhnF-Dsif2ykJS3VzybrbUHKa7ADZ0JODTobcGA/viewform?embedded=true"
+                width="640"
+                height="667"
+                className="w-full h-full border-0"
+                frameBorder={0}
+                marginHeight={0}
+                marginWidth={0}
+                title="Feedback Form"
+              >
+                Loading…
+              </iframe>
             </div>
           </div>
         </div>

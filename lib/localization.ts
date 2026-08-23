@@ -123,6 +123,34 @@ export const localization: Record<string, LocalizationEntry> = {
     en: "Signed in as",
     vi: "Đã đăng nhập:"
   },
+  "menu": {
+    en: "Menu",
+    vi: "Menu"
+  },
+  "refresh": {
+    en: "Refresh",
+    vi: "Làm mới"
+  },
+  "language": {
+    en: "Language",
+    vi: "Ngôn ngữ"
+  },
+  "english": {
+    en: "English",
+    vi: "English"
+  },
+  "vietnamese": {
+    en: "Tiếng Việt",
+    vi: "Tiếng Việt"
+  },
+  "feedback": {
+    en: "Feedback",
+    vi: "Góp ý"
+  },
+  "sign_out": {
+    en: "Logout",
+    vi: "Đăng xuất"
+  },
   "sign_in_btn": {
     en: "Sign In",
     vi: "Đăng nhập"
@@ -192,6 +220,26 @@ export const localization: Record<string, LocalizationEntry> = {
   "take_line": {
     en: "Take",
     vi: "Bắt tuyến"
+  },
+  "towards": {
+    en: "towards",
+    vi: "hướng"
+  },
+  "station": {
+    en: "station",
+    vi: "trạm"
+  },
+  "stops": {
+    en: "stops",
+    vi: "trạm"
+  },
+  "stop": {
+    en: "stop",
+    vi: "trạm"
+  },
+  "transit": {
+    en: "Transit",
+    vi: "Phương tiện công cộng"
   },
   "walk_to_destination": {
     en: "Walk to destination",
@@ -404,6 +452,10 @@ export const localization: Record<string, LocalizationEntry> = {
   "save_and_finish": {
     en: "Save and Finish",
     vi: "Lưu và Hoàn tất"
+  },
+  "default_tour_name": {
+    en: "{city} tour, {date}",
+    vi: "Tour {city}, {date}"
   },
   "trip_suffix": {
     en: "trip",

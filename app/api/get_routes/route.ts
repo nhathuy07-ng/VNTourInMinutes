@@ -63,12 +63,12 @@ export async function POST(req: NextRequest) {
                  if (transitSteps.length > 0) {
                    const instructions = transitSteps.map((s: any) => {
                      const details = s.transitDetails;
-                     const line = details.transitLine?.nameShort || details.transitLine?.name || "Transit";
-                     const headsign = details.headsign ? ` towards ${details.headsign}` : "";
-                     const departure = details.stopDetails?.departureStop?.name || "station";
-                     const arrival = details.stopDetails?.arrivalStop?.name || "station";
-                     const stops = details.stopCount ? ` (${details.stopCount} stops)` : "";
-                     return { line: `${line}${headsign}`, departure, arrival, stops };
+                     const line = details.transitLine?.nameShort || details.transitLine?.name || "";
+                     const headsign = details.headsign || "";
+                     const departure = details.stopDetails?.departureStop?.name || "";
+                     const arrival = details.stopDetails?.arrivalStop?.name || "";
+                     const stopCount = details.stopCount ? Number(details.stopCount) : 0;
+                     return { line, headsign, departure, arrival, stopCount, stop_count: stopCount };
                    });
                    instruction = JSON.stringify(instructions);
                  } else {

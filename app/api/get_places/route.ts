@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       response_fields: {
         candidates: [
           {
-            name: "string",
+            name: `string (place name in ${lang})`,
             maps_place_id: "string (empty if unknown)",
             maps_coords: "lat,lng as string (exact coordinates, 6 decimal places)",
             address: "string",
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
             rating: "number (0-5)",
             rate_count: "number",
             introduction: `string (brief description in ${lang})`,
-            category: "string",
+            category: `string (category in ${lang})`,
             is_outdoor: "boolean",
             suggested_stay_time_secs: "number"
           }
