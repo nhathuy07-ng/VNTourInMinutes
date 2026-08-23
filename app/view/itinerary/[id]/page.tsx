@@ -6,6 +6,7 @@ import { ChevronLeft, Share as _Share, Trash2, MapPin, Bus, Footprints, Route } 
 import { useState, useEffect } from "react";
 import { Itinerary } from "@/lib/types";
 import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
+import { useTranslation } from "@/lib/localization";
 
 export default function ItineraryView() {
   const router = useRouter();
@@ -13,6 +14,7 @@ export default function ItineraryView() {
   const id = params?.id as string;
   const { itineraries, deleteItinerary, loadItinerary } = useStore();
   const user = useStore(state => state.user);
+  const { t, language } = useTranslation();
   const [itinerary, setItinerary] = useState<Itinerary | null>(null);
 
   useEffect(() => {
@@ -34,16 +36,17 @@ export default function ItineraryView() {
 
   const getCategoryLabel = (cityId: string, categoryId: string) => {
     const genericType = GENERIC_PLACE_TYPES.find(pt => pt.id === categoryId);
-    if (genericType) return genericType.en;
+    if (genericType) return language === "vi" ? (genericType.vi || genericType.en) : genericType.en;
     
     const city = VIETNAM_CITIES.find(c => c.id === cityId);
     if (!city) return categoryId;
     const placeType = city.place_types?.find(pt => pt.id === categoryId);
-    return placeType ? placeType.en : categoryId;
+    if (placeType) return language === "vi" ? (placeType.vi || placeType.en) : placeType.en;
+    return categoryId;
   };
 
   if (!itinerary) {
-    return <div className="min-h-screen bg-white flex items-center justify-center">Loading...</div>;
+    return <div className="min-h-screen bg-white flex items-center justify-center">{t("loading")}</div>;
   }
 
   const handleDelete = () => {
@@ -85,7 +88,7 @@ export default function ItineraryView() {
           className={`px-3 py-1.5 border border-blue-600 rounded-lg bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-start ${additionalClass}`}
         >
           <Route size={16} className="text-blue-600" />
-          Get directions
+          {t("get_directions")}
         </a>
       );
     };
@@ -101,14 +104,14 @@ export default function ItineraryView() {
                 {data.type === "walk" ? (
                   <div className="flex flex-col gap-1"><div className="flex items-center gap-2">
                     <Footprints size={16} className="text-neutral-400" />
-                    <span>{data.instruction}</span>
+                    <span>{t("walk_to_destination")}</span>
                   </div>
                   {dataArr.length === 1 && renderLink("mt-1 ml-6")}</div>
                 ) : (
                   <div className="flex flex-col gap-1 text-sm">
                     <div className="flex items-center gap-2 font-bold text-neutral-800">
                       <Bus size={32} className="text-blue-500" />
-                      <span>Take {data.line}</span>
+                      <span>{t("take_line")} {data.line}</span>
                     </div>
                     <div className="text-neutral-500 ml-6 flex flex-wrap gap-1 items-center">
                       <span>{data.departure}</span>
@@ -151,7 +154,7 @@ export default function ItineraryView() {
           <button onClick={() => router.back()} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="font-extrabold tracking-tight text-lg">Tour Details</h1>
+          <h1 className="font-extrabold tracking-tight text-lg">{t("tour_details")}</h1>
         </div>
         <div className="flex gap-2">
           {/* Share functionality is temporarily disabled/hidden */}
@@ -168,7 +171,7 @@ export default function ItineraryView() {
             <span>·</span>
             <span>{itinerary.City}</span>
             <span>·</span>
-            <span className="capitalize">{itinerary.transport}</span>
+            <span className="capitalize">{itinerary.transport === "CAR" ? t("car") : itinerary.transport === "BUS" ? t("bus") : t("bike")}</span>
           </div>
         </div>
 
@@ -179,7 +182,7 @@ export default function ItineraryView() {
                 <div className="flex flex-col items-start pb-4">
                   <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 w-full sm:w-auto flex flex-col sm:flex-row items-start sm:items-center gap-4 shadow-sm">
                     <span className="text-sm font-semibold text-blue-900 text-left">
-                      Get direction to your first attraction
+                      {t("get_directions_first_attraction")}
                     </span>
                     <a 
                       href={`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(formatAddressForMaps(item.name, item.address))}&travelmode=${itinerary.transport === 'CAR' ? 'driving' : itinerary.transport === 'BUS' ? 'transit' : 'bicycling'}`}
@@ -188,7 +191,7 @@ export default function ItineraryView() {
                       className="px-4 py-2 rounded-lg border border-blue-600 bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-stretch sm:self-auto justify-center"
                     >
                       <Route size={16} className="text-blue-600" />
-                      Get directions
+                      {t("get_directions")}
                     </a>
                   </div>
                 </div>
@@ -212,7 +215,7 @@ export default function ItineraryView() {
                     </span>
                     <span>•</span>
                     <span className="uppercase tracking-wider">
-                      {item.is_outdoor ? 'Outdoor' : 'Indoor'}
+                      {item.is_outdoor ? t("outdoor") : t("indoor")}
                     </span>
                   </div>
 
@@ -242,15 +245,21 @@ export default function ItineraryView() {
                     className="px-3 py-1.5 border border-blue-600 rounded-lg bg-white hover:bg-blue-50 text-sm font-medium text-blue-600 flex items-center gap-2 transition-colors self-start"
                   >
                     <Route size={16} className="text-blue-600" />
-                    Get directions
+                    {t("get_directions")}
                   </a>
                 </div>
               )}
             </div>
           )) : (
-            <div className="py-12 flex items-center justify-center text-neutral-400">Loading itinerary details...</div>
+            <div className="py-12 flex items-center justify-center text-neutral-400">{t("loading_itinerary_details")}</div>
           )}
         </div>
+
+        {itinerary.items && itinerary.items.length > 0 && (
+          <p className="text-xs text-neutral-400 text-center mt-8">
+            {t("tour_ai_footnote")}
+          </p>
+        )}
       </main>
     </div>
   );

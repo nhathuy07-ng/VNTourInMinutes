@@ -5,8 +5,11 @@ import { Itinerary } from "./types";
 import { User } from "firebase/auth";
 import { db, auth } from "./firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, getDocFromCache } from "firebase/firestore";
+import { Language } from "./localization";
 
 interface AppState {
+  language: Language;
+  setLanguage: (lang: Language) => void;
   user: User | null;
   setUser: (user: User | null) => void;
   isGuest: boolean;
@@ -40,6 +43,8 @@ const idbStorage: StateStorage = {
 export const useStore = create<AppState>()(
   persist(
     (set_zustand, get_zustand) => ({
+      language: "en",
+      setLanguage: (language) => set_zustand({ language }),
       user: null,
       setUser: (user) => set_zustand({ user }),
       isGuest: false,

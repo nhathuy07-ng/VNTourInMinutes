@@ -21,6 +21,7 @@ export async function POST(req: NextRequest) {
       pref_children_friendly,
       pref_accessible,
       lesser_known,
+      response_value_language,
     } = await req.json();
 
     const constraints = [];
@@ -28,10 +29,13 @@ export async function POST(req: NextRequest) {
     if (pref_accessible) constraints.push("Wheelchair-accessible");
     if (pref_children_friendly) constraints.push("Child-friendly");
 
+    const lang = response_value_language === "vi" || response_value_language === "vietnamese" ? "Vietnamese" : "English";
+
     const systemInstruction = JSON.stringify({
       persona: "travel planner",
       task: "find at least 20 places",
       response_type: "json (no markdown blocks, just the JSON string)",
+      response_value_language: lang,
       response_fields: {
         candidates: [
           {
@@ -42,7 +46,7 @@ export async function POST(req: NextRequest) {
             opening_time: "HH:MM - HH:MM",
             rating: "number (0-5)",
             rate_count: "number",
-            introduction: "string (brief description)",
+            introduction: `string (brief description in ${lang})`,
             category: "string",
             is_outdoor: "boolean",
             suggested_stay_time_secs: "number"
@@ -56,7 +60,8 @@ export async function POST(req: NextRequest) {
       city: `${city}, Vietnam`,
       place_categories: place_types,
       constraints: constraints,
-      tour_start: datetime
+      tour_start: datetime,
+      response_value_language: lang
     }, null, 2);
 
     const ai = getAIClient();
@@ -96,7 +101,8 @@ export async function POST(req: NextRequest) {
         const prompt2 = JSON.stringify({
           task: "find 10 more DIFFERENT places, day tour",
           tour_start: datetime,
-          excluded_places: excludedNames
+          excluded_places: excludedNames,
+          response_value_language: lang
         }, null, 2);
         
         const response2 = await callAI(prompt2);

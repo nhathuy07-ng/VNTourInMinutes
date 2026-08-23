@@ -5,17 +5,18 @@ import { ChevronLeft, CheckCircle2, ArrowRight, Loader2, MapPin, Search, Calenda
 import { useStore } from "@/lib/store";
 import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
-import { VIETNAM_CITIES, GENERIC_PLACE_TYPES, getCategoryLabel } from "@/lib/cities";
+import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
+import { useTranslation } from "@/lib/localization";
 
 const EVENT_CATEGORIES = [
-  "Sports Events",
-  "Traditional / Folk Festivals",
-  "Culinary Fairs",
-  "Live Cultural / Nighttime Shows",
-  "Craft Workshops",
-  "Expos",
-  "Concerts",
-  "Other"
+  { id: "Sports Events", phrase_id: "category_sports_events" },
+  { id: "Traditional / Folk Festivals", phrase_id: "category_traditional_folk_festivals" },
+  { id: "Culinary Fairs", phrase_id: "category_culinary_fairs" },
+  { id: "Live Cultural / Nighttime Shows", phrase_id: "category_live_cultural_nighttime_shows" },
+  { id: "Craft Workshops", phrase_id: "category_craft_workshops" },
+  { id: "Expos", phrase_id: "category_expos" },
+  { id: "Concerts", phrase_id: "category_concerts" },
+  { id: "Other", phrase_id: "category_other" }
 ];
 
 export interface EventParticipation {
@@ -36,6 +37,7 @@ export interface EventItem {
 
 export default function NewEventItinerary() {
   const router = useRouter();
+  const { t, language } = useTranslation();
   const [step, setStep] = useState(1);
   const [city, setCity] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -58,6 +60,17 @@ export default function NewEventItinerary() {
   const [selectedPlaceCategories, setSelectedPlaceCategories] = useState<string[]>([]);
 
   const { addItinerary } = useStore();
+
+  const getPlaceCategoryLabel = (cityId: string, categoryId: string) => {
+    const genericType = GENERIC_PLACE_TYPES.find(pt => pt.id === categoryId);
+    if (genericType) return language === "vi" ? (genericType.vi || genericType.en) : genericType.en;
+
+    const cityData = VIETNAM_CITIES.find(c => c.id === cityId);
+    if (!cityData) return categoryId;
+    const placeType = cityData.place_types?.find(pt => pt.id === categoryId);
+    if (placeType) return language === "vi" ? (placeType.vi || placeType.en) : placeType.en;
+    return categoryId;
+  };
   
   // Step 5 state
   const [itineraryItems, setItineraryItems] = useState<ItineraryItem[]>([]);
@@ -109,12 +122,13 @@ export default function NewEventItinerary() {
           city: cityName,
           categories: selectedCategories,
           monthFrom,
-          monthTo
+          monthTo,
+          response_value_language: language
         })
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.message || "Failed to find events.");
+        setErrorMsg(data.message || t("failed_find_events"));
         return;
       }
       
@@ -134,7 +148,7 @@ export default function NewEventItinerary() {
       setStep(2);
     } catch (e) {
       console.error(e);
-      setErrorMsg("Network error. Please try again.");
+      setErrorMsg(t("network_error"));
     } finally {
       setIsLoading(false);
     }
@@ -215,9 +229,9 @@ export default function NewEventItinerary() {
       const newDateStr = `${yyyy}-${mm}-${dd}`;
       setDate(newDateStr);
       
-      const cityName = VIETNAM_CITIES.find(c => c.id === city)?.name_en || city;
-      const formattedDate = new Date(`${newDateStr}T00:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" });
-      setFinalName(`${cityName} trip, ${formattedDate}`);
+      const cityName = (language === "vi" ? (VIETNAM_CITIES.find(c => c.id === city)?.name_vi || VIETNAM_CITIES.find(c => c.id === city)?.name_en) : VIETNAM_CITIES.find(c => c.id === city)?.name_en) || city;
+      const formattedDate = new Date(`${newDateStr}T00:00:00`).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", { month: "long", day: "numeric" });
+      setFinalName(`${cityName} ${t("trip_suffix")}, ${formattedDate}`);
       
       const timeStart = events[parseInt(eI)].participations[parseInt(pI)].time_start;
       if (timeStart) {
@@ -423,7 +437,7 @@ export default function NewEventItinerary() {
     const d = date || new Date().toISOString().split('T')[0];
     addItinerary({
       id: uuidv4(),
-      name: finalName || "My Event Tour",
+      name: finalName || t("my_event_tour"),
       Start_DateTime: new Date(`${d}T${paddedTime}`).toISOString(),
       City: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
       transport,
@@ -461,7 +475,7 @@ export default function NewEventItinerary() {
       }
 
       if (startMins < openMins || endMins > closeMins) {
-        return { isWarning: true, msg: `Outside opening hours (${item.opening_time})` };
+        return { isWarning: true, msg: `${t("warning_outside_opening_hours")} (${item.opening_time})` };
       }
       return null;
     }
@@ -534,7 +548,7 @@ export default function NewEventItinerary() {
           <button onClick={handleBackClick} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="ml-2 font-extrabold tracking-tight text-lg">Find Events</h1>
+          <h1 className="ml-2 font-extrabold tracking-tight text-lg">{t("find_events")}</h1>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6 bg-neutral-50/50">
@@ -543,7 +557,7 @@ export default function NewEventItinerary() {
           <div className="p-5 rounded-xl border border-neutral-200 bg-white shadow-sm">
             <div className="flex items-center gap-3 mb-4">
               <div className="w-6 h-6 rounded-full bg-black text-white flex items-center justify-center font-bold text-xs">1</div>
-              <h3 className="text-base font-bold">Destination</h3>
+              <h3 className="text-base font-bold">{t("destination")}</h3>
             </div>
             
             <div className="relative" ref={cityDropdownRef}>
@@ -552,7 +566,7 @@ export default function NewEventItinerary() {
                 className="w-full bg-white border border-neutral-200 rounded-lg py-3 pl-12 pr-4 text-base font-medium cursor-pointer hover:border-neutral-300 transition-colors"
                 onClick={() => setIsCityDropdownOpen(true)}
               >
-                {VIETNAM_CITIES.find(c => c.id === city)?.name_en || <span className="text-neutral-400">Select a city</span>}
+                {(city && (language === "vi" ? (VIETNAM_CITIES.find(c => c.id === city)?.name_vi || VIETNAM_CITIES.find(c => c.id === city)?.name_en) : VIETNAM_CITIES.find(c => c.id === city)?.name_en)) || <span className="text-neutral-400">{t("select_a_city")}</span>}
               </div>
               
               {isCityDropdownOpen && (
@@ -560,7 +574,7 @@ export default function NewEventItinerary() {
                   <div className="p-2 border-b border-neutral-100 shrink-0">
                      <input
                         type="text"
-                        placeholder="Search city..."
+                        placeholder={t("search_city_placeholder")}
                         value={citySearchQuery}
                        onChange={(e) => setCitySearchQuery(e.target.value)}
                        className="w-full bg-neutral-100 px-3 py-2 rounded-md text-sm focus:outline-none"
@@ -577,7 +591,7 @@ export default function NewEventItinerary() {
                         className="px-4 py-3 hover:bg-neutral-50 cursor-pointer border-b border-neutral-50 last:border-b-0"
                         onClick={() => { setCity(c.id); setIsCityDropdownOpen(false); }}
                       >
-                        <span className="font-medium block">{c.name_en}</span>
+                        <span className="font-medium block">{language === "vi" ? c.name_vi : c.name_en}</span>
                       </div>
                   ))}
                   </div>
@@ -587,7 +601,7 @@ export default function NewEventItinerary() {
 
             <div className="mt-4 flex flex-col sm:flex-row gap-4">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">From (Optional)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">{t("from_month_optional")}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-2.5 text-neutral-400" size={16} />
                   <input 
@@ -599,7 +613,7 @@ export default function NewEventItinerary() {
                 </div>
               </div>
               <div className="flex-1">
-                <label className="block text-sm font-medium text-neutral-700 mb-1">To (Optional)</label>
+                <label className="block text-sm font-medium text-neutral-700 mb-1">{t("to_month_optional")}</label>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-2.5 text-neutral-400" size={16} />
                   <input 
@@ -617,25 +631,25 @@ export default function NewEventItinerary() {
           <div className={`p-5 rounded-xl border transition-all duration-500 ${!city ? 'border-neutral-200 bg-neutral-50/50 opacity-50 pointer-events-none' : 'border-neutral-200 bg-white shadow-sm'}`}>
             <div className="flex items-center gap-3 mb-4">
               <div className={`w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs ${!city ? 'bg-neutral-200 text-neutral-500' : 'bg-black text-white'}`}>2</div>
-              <h3 className="text-base font-bold">Categories</h3>
+              <h3 className="text-base font-bold">{t("categories")}</h3>
             </div>
             
             <div className="flex flex-wrap gap-2">
               {EVENT_CATEGORIES.map(cat => {
-                const isSelected = selectedCategories.includes(cat);
+                const isSelected = selectedCategories.includes(cat.id);
                 return (
                   <button
-                    key={cat}
+                    key={cat.id}
                     onClick={() => {
                       if (isSelected) {
-                        setSelectedCategories(selectedCategories.filter(c => c !== cat));
+                        setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
                       } else {
-                        setSelectedCategories([...selectedCategories, cat]);
+                        setSelectedCategories([...selectedCategories, cat.id]);
                       }
                     }}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${isSelected ? "bg-black text-white ring-2 ring-black ring-offset-1" : "bg-neutral-100 text-neutral-700 hover:bg-neutral-200"}`}
                   >
-                    {cat}
+                    {t(cat.phrase_id)}
                   </button>
                 );
               })}
@@ -657,12 +671,12 @@ export default function NewEventItinerary() {
               {isLoading ? (
                 <>
                   <Loader2 className="animate-spin" size={20} />
-                  Searching events...
+                  {t("searching_events")}
                 </>
               ) : (
                 <>
                   <Search size={20} />
-                  Search
+                  {t("search")}
                 </>
               )}
             </button>
@@ -680,18 +694,18 @@ export default function NewEventItinerary() {
           <button onClick={handleBackClick} className="p-2 -ml-2 text-neutral-400 hover:text-black">
             <ChevronLeft size={24} />
           </button>
-          <h1 className="ml-2 font-extrabold tracking-tight text-lg">Select Events</h1>
+          <h1 className="ml-2 font-extrabold tracking-tight text-lg">{t("select_events")}</h1>
         </header>
 
       <main className="flex-1 overflow-y-auto p-4 md:p-6 bg-neutral-50/50">
         <div className="max-w-2xl mx-auto space-y-4">
           <p className="text-neutral-500 font-medium mb-2">
-            Found {events.length} event(s) matching your criteria.
+            {t("found_events_count", { count: events.length })}
           </p>
           
           {events.length === 0 && (
             <div className="text-center py-12 bg-white rounded-xl border border-neutral-200">
-              <p className="text-neutral-500 font-medium">No events found for this selection.</p>
+              <p className="text-neutral-500 font-medium">{t("no_events_found")}</p>
             </div>
           )}
 
@@ -708,7 +722,7 @@ export default function NewEventItinerary() {
                     </p>
                     
                     <div className="space-y-3">
-                      <h4 className="font-semibold text-sm text-neutral-800">Participation Options</h4>
+                      <h4 className="font-semibold text-sm text-neutral-800">{t("participation_options")}</h4>
                       {event.participations && event.participations.map((part) => {
                         const isLocked = isParticipationLocked(part);
                         const isSelected = selectedParticipationIds.includes(part.id);
@@ -748,7 +762,7 @@ export default function NewEventItinerary() {
                                 <div className="flex items-center gap-2 text-sm text-neutral-800 font-medium mb-1">
                                   <Calendar size={14} className="text-neutral-500" />
                                   <span>
-                                    {new Date(part.date).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}
+                                    {new Date(part.date).toLocaleDateString(language === "vi" ? "vi-VN" : "en-US", { weekday: "short", month: "short", day: "numeric" })}
                                   </span>
                                   <span className="text-neutral-400">•</span>
                                   <span>{part.time_start} - {part.time_end}</span>
@@ -761,7 +775,7 @@ export default function NewEventItinerary() {
                             </div>
                             {isLocked && (
                               <div className="absolute top-2 right-2 bg-neutral-200 text-neutral-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase">
-                                Unavailable
+                                {t("unavailable")}
                               </div>
                             )}
                           </div>
@@ -778,7 +792,7 @@ export default function NewEventItinerary() {
             <div className="mt-8 p-5 bg-neutral-100 rounded-xl border border-neutral-200">
               <h4 className="font-semibold text-sm text-neutral-800 mb-3 flex items-center gap-2">
                 <ExternalLink size={16} className="text-neutral-500" />
-                Information Sources
+                {t("information_sources")}
               </h4>
               <ul className="space-y-2">
                 {globalSources.map((url, idx) => (
@@ -803,14 +817,14 @@ export default function NewEventItinerary() {
         <div className="px-4 py-3 bg-amber-50 border-t border-amber-200 text-amber-800 flex gap-3 text-sm items-start shrink-0">
           <Info className="shrink-0 mt-0.5 text-amber-600" size={18} />
           <p className="font-medium">
-            Warning: You have selected overlapping events. You might not be able to attend the event(s) in its full length and some events may have policies preventing late check-ins.
+            {t("warning_overlapping_events")}
           </p>
         </div>
       )}
       <footer className="shrink-0 p-4 border-t border-neutral-100 bg-white">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <p className="text-sm font-medium text-neutral-500">
-            {selectedParticipationIds.length} option(s) selected
+            {t("options_selected_count", { count: selectedParticipationIds.length })}
           </p>
           <button 
             disabled={selectedParticipationIds.length === 0}
@@ -820,7 +834,7 @@ export default function NewEventItinerary() {
             }`}
           >
             {hasOverlapWarning() && <Info size={18} className="text-amber-400" />}
-            Continue
+            {t("continue")}
           </button>
         </div>
       </footer>
@@ -829,20 +843,20 @@ export default function NewEventItinerary() {
       {showDiscardPopup && (
         <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
           <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col p-6">
-            <h2 className="font-bold text-xl mb-2 text-neutral-900">Discard itinerary?</h2>
-            <p className="text-neutral-500 mb-6 leading-relaxed">Are you sure you want to go back? Your current itinerary and generated suggestions will be lost.</p>
+            <h2 className="font-bold text-xl mb-2 text-neutral-900">{t("discard_itinerary_title")}</h2>
+            <p className="text-neutral-500 mb-6 leading-relaxed">{t("discard_itinerary_desc")}</p>
             <div className="flex items-center gap-3 w-full">
               <button 
                 onClick={() => setShowDiscardPopup(false)} 
                 className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
               >
-                Cancel
+                {t("cancel")}
               </button>
               <button 
                 onClick={() => router.push("/view/main")} 
                 className="flex-1 py-3 px-4 bg-red-600 text-white font-medium rounded-md hover:bg-red-700 transition-colors"
               >
-                Discard
+                {t("discard")}
               </button>
             </div>
           </div>
@@ -853,6 +867,7 @@ export default function NewEventItinerary() {
   }
 
   if (step === 3) {
+    const displayCityName = (city && (language === "vi" ? (VIETNAM_CITIES.find(c => c.id === city)?.name_vi || VIETNAM_CITIES.find(c => c.id === city)?.name_en) : VIETNAM_CITIES.find(c => c.id === city)?.name_en)) || city;
     return (
       <div className="h-[100dvh] bg-white text-neutral-900 flex flex-col font-sans overflow-hidden items-center justify-center">
         <header className="h-16 px-4 flex items-center bg-white border-b border-neutral-100 shrink-0 w-full absolute top-0">
@@ -860,25 +875,25 @@ export default function NewEventItinerary() {
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">
-            <h1 className="font-extrabold tracking-tight text-lg">Add Side Attractions?</h1>
+            <h1 className="font-extrabold tracking-tight text-lg">{t("add_side_attractions_title")}</h1>
           </div>
         </header>
 
         <div className="max-w-md mx-auto text-center p-6 mt-16">
-          <h2 className="text-2xl font-bold mb-4">Add side attractions?</h2>
-          <p className="text-neutral-500 mb-8">Explore {VIETNAM_CITIES.find(c => c.id === city)?.name_en || city} at your own pace.</p>
+          <h2 className="text-2xl font-bold mb-4">{t("add_side_attractions_heading")}</h2>
+          <p className="text-neutral-500 mb-8">{t("explore_city_pace", { city: displayCityName })}</p>
           <div className="flex flex-col gap-4">
             <button 
               onClick={() => setStep(4)}
               className="py-4 px-6 bg-black text-white font-semibold rounded-lg hover:bg-neutral-800 transition-colors"
             >
-              Yes
+              {t("yes")}
             </button>
             <button 
               onClick={() => setStep(5)}
               className="py-4 px-6 bg-neutral-100 text-neutral-900 font-semibold rounded-lg hover:bg-neutral-200 transition-colors"
             >
-              No
+              {t("no")}
             </button>
           </div>
         </div>
@@ -904,16 +919,17 @@ export default function NewEventItinerary() {
         body: JSON.stringify({
           city: VIETNAM_CITIES.find(c => c.id === city)?.name_en || city,
           datetime,
-          place_types: selectedPlaceCategories.map(catId => getCategoryLabel(city, catId)),
+          place_types: selectedPlaceCategories.map(catId => getPlaceCategoryLabel(city, catId)),
           pref_children_friendly: prefChildrenFriendly,
           pref_accessible: prefAccessible,
           lesser_known: prefLesserKnown,
-          transport
+          transport,
+          response_value_language: language
         })
       });
       const data = await res.json();
       if (!res.ok) {
-        setErrorMsg(data.message || "Failed to find places.");
+        setErrorMsg(data.message || t("failed_find_places"));
         return;
       }
       const loadedCandidates = data.candidates || [];
@@ -922,7 +938,7 @@ export default function NewEventItinerary() {
       setStep(5);
     } catch (e) {
       console.error(e);
-      setErrorMsg("Network error. Please try again.");
+      setErrorMsg(t("network_error"));
     } finally {
       setIsLoading(false);
     }
@@ -936,7 +952,7 @@ export default function NewEventItinerary() {
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">
-            <h1 className="font-extrabold tracking-tight text-lg">Side Attractions</h1>
+            <h1 className="font-extrabold tracking-tight text-lg">{t("side_attractions")}</h1>
           </div>
         </header>
 
@@ -946,12 +962,12 @@ export default function NewEventItinerary() {
             <div className="p-5 rounded-xl border border-neutral-200 bg-white shadow-sm">
               <div className="flex items-center gap-3 mb-6">
                 <div className="w-6 h-6 rounded-full flex items-center justify-center font-bold text-xs bg-black text-white">1</div>
-                <h3 className="text-base font-bold">Interests & Details</h3>
+                <h3 className="text-base font-bold">{t("interests_and_details")}</h3>
               </div>
               
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Places</label>
+                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">{t("places")}</label>
                   <div className="flex flex-wrap gap-2">
                     {city ? (
                       <>
@@ -971,7 +987,7 @@ export default function NewEventItinerary() {
                                 : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
                             )}
                           >
-                            {cat.en}
+                            {language === "vi" ? cat.vi : cat.en}
                           </button>
                         ))}
                         
@@ -993,7 +1009,7 @@ export default function NewEventItinerary() {
                                 : "border-neutral-200 text-neutral-600 bg-white hover:border-neutral-300 hover:bg-neutral-50"
                             )}
                           >
-                            {cat.en}
+                            {language === "vi" ? cat.vi : cat.en}
                           </button>
                         ))}
 
@@ -1001,7 +1017,7 @@ export default function NewEventItinerary() {
                           onClick={() => setShowMorePlaces(!showMorePlaces)}
                           className="px-4 py-2 rounded-lg text-sm font-semibold border border-neutral-200 text-neutral-600 bg-neutral-100 hover:bg-neutral-200 transition-all flex items-center gap-1"
                         >
-                          {showMorePlaces ? "Show less" : "More places..."}
+                          {showMorePlaces ? t("show_less") : t("more_places")}
                         </button>
                       </>
                     ) : null}
@@ -1009,14 +1025,14 @@ export default function NewEventItinerary() {
                 </div>
 
                 <div className="pt-4 border-t border-neutral-100">
-                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">Preferences</label>
+                  <label className="block text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-3">{t("preferences")}</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
                       <div className={"w-5 h-5 rounded flex items-center justify-center " + (prefChildrenFriendly ? 'bg-black border-black' : 'border-2 border-neutral-300')}>
                         {prefChildrenFriendly && <Check size={14} className="text-white" />}
                       </div>
                       <input type="checkbox" className="hidden" checked={prefChildrenFriendly} onChange={() => setPrefChildrenFriendly(!prefChildrenFriendly)} />
-                      <span className="font-semibold text-sm text-neutral-800">Child-friendly</span>
+                      <span className="font-semibold text-sm text-neutral-800">{t("child_friendly")}</span>
                     </label>
                     
                     <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors">
@@ -1024,7 +1040,7 @@ export default function NewEventItinerary() {
                         {prefAccessible && <Check size={14} className="text-white" />}
                       </div>
                       <input type="checkbox" className="hidden" checked={prefAccessible} onChange={() => setPrefAccessible(!prefAccessible)} />
-                      <span className="font-semibold text-sm text-neutral-800">Accessible</span>
+                      <span className="font-semibold text-sm text-neutral-800">{t("accessible")}</span>
                     </label>
                     
                     <label className="flex items-center gap-3 p-3 bg-white border border-neutral-200 rounded-lg cursor-pointer hover:bg-neutral-50 hover:border-neutral-300 transition-colors sm:col-span-2">
@@ -1032,7 +1048,7 @@ export default function NewEventItinerary() {
                         {prefLesserKnown && <Check size={14} className="text-white" />}
                       </div>
                       <input type="checkbox" className="hidden" checked={prefLesserKnown} onChange={() => setPrefLesserKnown(!prefLesserKnown)} />
-                      <span className="font-semibold text-sm text-neutral-800">Lesser known places</span>
+                      <span className="font-semibold text-sm text-neutral-800">{t("lesser_known_places")}</span>
                     </label>
                   </div>
                 </div>
@@ -1053,7 +1069,7 @@ export default function NewEventItinerary() {
                  onClick={() => setStep(5)}
                  className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
               >
-                Skip
+                {t("skip")}
               </button>
               <button
                 onClick={handleFindPlaces}
@@ -1063,9 +1079,9 @@ export default function NewEventItinerary() {
                 {isLoading ? (
                   <>
                     <Loader2 className="animate-spin" size={20} />
-                    Finding...
+                    {t("finding")}
                   </>
-                ) : "Next Step"}
+                ) : t("next_step")}
               </button>
             </div>
           </div>
@@ -1082,15 +1098,15 @@ export default function NewEventItinerary() {
             <ChevronLeft size={24} />
           </button>
           <div className="ml-2">
-            <h1 className="font-extrabold tracking-tight text-lg">Plan Itinerary</h1>
+            <h1 className="font-extrabold tracking-tight text-lg">{t("plan_itinerary")}</h1>
           </div>
         </header>
         <div className="flex-1 flex flex-col max-w-2xl mx-auto w-full overflow-hidden">
           {/* Start Time Configurator */}
           <div className="p-4 border-b border-neutral-100 flex items-center justify-between bg-white shrink-0 z-10 shadow-sm">
             <div>
-              <h2 className="text-sm font-bold text-neutral-800">Tour Start Time</h2>
-              <p className="text-xs text-neutral-500">Adjust when your day begins</p>
+              <h2 className="text-sm font-bold text-neutral-800">{t("tour_start_time")}</h2>
+              <p className="text-xs text-neutral-500">{t("adjust_day_begins")}</p>
             </div>
             <input 
               type="time"
@@ -1101,7 +1117,7 @@ export default function NewEventItinerary() {
           </div>
           
           <div className="flex-1 overflow-y-auto p-4 bg-white relative">
-            <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">Your Itinerary</h2>
+            <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider mb-4">{t("your_itinerary")}</h2>
             
             <div className="space-y-3 pb-4">
               {itineraryItems.map((item, idx) => {
@@ -1123,24 +1139,24 @@ export default function NewEventItinerary() {
                             onClick={() => { setEditingStayTimeIdx(idx); setNewStayTimeMins(String(Math.round((item.suggested_stay_time_secs || 3600) / 60))); }}
                             className={`px-2 py-1 rounded border flex items-center gap-1 hover:bg-black/5 transition-colors ${isClosed ? "bg-yellow-100/50 border-yellow-200" : "bg-white border-neutral-200"}`}
                           >
-                            {Math.round((item.suggested_stay_time_secs || 3600) / 60)} mins
+                            {Math.round((item.suggested_stay_time_secs || 3600) / 60)} {t("mins")}
                             <Edit2 size={12} />
                           </button>
                         </div>
 
                         {evtTiming?.isWarning && (
                           <div className="mt-2 text-xs font-semibold text-yellow-700">
-                            {evtTiming.msg || "Warning: You arrive late. Please check the event's policy regarding late check-ins."}
+                            {evtTiming.msg || t("warning_arrive_late")}
                           </div>
                         )}
                         {evtTiming?.nudgeEarlyArrive && !evtTiming.isWarning && (
                           <div className="mt-2 text-xs text-neutral-500">
-                            You arrive early. Explore nearby spots before the main event begins!
+                            {t("nudge_arrive_early")}
                           </div>
                         )}
                         {evtTiming?.nudgeEarlyLeave && (
                           <div className="mt-2 text-xs text-neutral-500">
-                            You leave before the event ends. You might not enjoy it in full.
+                            {t("nudge_leave_early")}
                           </div>
                         )}
                       </div>
@@ -1160,12 +1176,12 @@ export default function NewEventItinerary() {
             {candidates.length > 0 && (
               <div className="p-4 pb-2">
                 <div className="flex justify-between items-center mb-3 px-1">
-                  <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">Suggestions</h2>
+                  <h2 className="text-xs font-semibold text-neutral-400 uppercase tracking-wider">{t("suggestions")}</h2>
                   <button 
                     onClick={() => setShowInfoPopup(true)} 
                     className="flex items-center gap-1 bg-blue-50 text-blue-600 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider hover:bg-blue-100 transition-colors"
                   >
-                    <Info size={14} /> INFO
+                    <Info size={14} /> {t("info_btn")}
                   </button>
                 </div>
                 <div className="flex overflow-x-scroll gap-4 snap-x [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
@@ -1182,7 +1198,7 @@ export default function NewEventItinerary() {
                             <Plus size={14} />
                           </button>
                         </div>
-                        <p className="text-xs text-neutral-500 truncate mt-1">{getCategoryLabel(city, c.category)} • {c.is_outdoor ? "Outdoor" : "Indoor"}</p>
+                        <p className="text-xs text-neutral-500 truncate mt-1">{getPlaceCategoryLabel(city, c.category)} • {c.is_outdoor ? t("outdoor") : t("indoor")}</p>
                         <div className="flex items-center gap-1.5 mt-1">
                           <div className="flex items-center gap-1 bg-neutral-50 border border-neutral-100 px-1.5 py-0.5 rounded text-xs font-semibold text-neutral-500 w-max">
                             <span>★</span>
@@ -1203,16 +1219,16 @@ export default function NewEventItinerary() {
             )}
             <div className="p-4 space-y-3 shrink-0">
               <div className="flex gap-2">
-                {(["CAR", "BUS", "BIKE"] as const).map(t => (
+                {(["CAR", "BUS", "BIKE"] as const).map(tr => (
                   <button
-                    key={t}
-                    onClick={() => { setTransport(t); setHasUncalculatedChanges(true); }}
-                    className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-widest rounded-md border transition-colors ${transport === t ? "bg-black border-black text-white" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"}`}
+                    key={tr}
+                    onClick={() => { setTransport(tr); setHasUncalculatedChanges(true); }}
+                    className={`flex-1 py-2 flex items-center justify-center gap-2 text-xs font-semibold uppercase tracking-widest rounded-md border transition-colors ${transport === tr ? "bg-black border-black text-white" : "border-neutral-200 text-neutral-500 hover:bg-neutral-50"}`}
                   >
-                    {t === "CAR" && <Car size={14} />}
-                    {t === "BUS" && <Bus size={14} />}
-                    {t === "BIKE" && <Bike size={14} />}
-                    {t}
+                    {tr === "CAR" && <Car size={14} />}
+                    {tr === "BUS" && <Bus size={14} />}
+                    {tr === "BIKE" && <Bike size={14} />}
+                    {t(tr.toLowerCase())}
                   </button>
                 ))}
               </div>
@@ -1222,14 +1238,14 @@ export default function NewEventItinerary() {
                   disabled={!hasUncalculatedChanges || itineraryItems.length === 0 || isCalculating}
                   className={`flex-1 py-3 rounded-md font-medium disabled:opacity-50 transition-all ${hasUncalculatedChanges ? "bg-blue-50 text-blue-700 border border-blue-200 shadow-[0_0_15px_rgba(59,130,246,0.5)] ring-2 ring-blue-400 hover:bg-blue-100" : "bg-neutral-100 text-neutral-900 hover:bg-neutral-200"}`}
                 >
-                  {isCalculating ? "Calculating..." : "Recalculate Itinerary"}
+                  {isCalculating ? t("calculating") : t("recalculate_itinerary")}
                 </button>
                 <button
                   onClick={handleSaveTourClick}
                   disabled={itineraryItems.length === 0 || hasUncalculatedChanges}
                   className="flex-1 py-3 bg-black text-white rounded-md font-medium disabled:opacity-50 hover:bg-neutral-800 transition-colors flex items-center justify-center gap-2"
                 >
-                  {hasTimeWarnings && <AlertTriangle size={18} className="text-yellow-400" />} Continue
+                  {hasTimeWarnings && <AlertTriangle size={18} className="text-yellow-400" />} {t("continue")}
                 </button>
               </div>
             </div>
@@ -1240,19 +1256,19 @@ export default function NewEventItinerary() {
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-lg rounded-2xl shadow-xl flex flex-col max-h-[80vh]">
               <div className="flex items-center justify-between p-4 border-b border-neutral-100">
-                <h2 className="font-bold text-lg">Places Information</h2>
+                <h2 className="font-bold text-lg">{t("places_information")}</h2>
                 <button onClick={() => setShowInfoPopup(false)} className="p-2 hover:bg-neutral-100 rounded-full">
                   <X size={20} />
                 </button>
               </div>
               <div className="p-4 overflow-y-auto flex flex-col gap-6 flex-1">
                 {candidates.length === 0 ? (
-                  <p className="text-neutral-500 text-center py-8">No places available.</p>
+                  <p className="text-neutral-500 text-center py-8">{t("no_places_available")}</p>
                 ) : (
                   candidates.map((c, idx) => (
                     <div key={`info-${c.local_id || idx}`} className="flex flex-col gap-2 border-b border-neutral-100 pb-4 last:border-b-0 last:pb-0">
                       <h3 className="font-bold text-lg">{c.name}</h3>
-                      <p className="text-sm text-neutral-600 leading-relaxed">{c.introduction || "No description available."}</p>
+                      <p className="text-sm text-neutral-600 leading-relaxed">{c.introduction || t("no_description_available")}</p>
                     </div>
                   ))
                 )}
@@ -1267,21 +1283,21 @@ export default function NewEventItinerary() {
             <div className="bg-white w-full max-w-sm rounded-2xl shadow-xl flex flex-col p-6">
               <div className="flex items-center gap-3 mb-2">
                 <AlertTriangle className="text-yellow-500" size={24} />
-                <h2 className="font-bold text-xl text-neutral-900">Time Warning</h2>
+                <h2 className="font-bold text-xl text-neutral-900">{t("time_warning_title")}</h2>
               </div>
-              <p className="text-neutral-500 mb-6 leading-relaxed">Some events in your itinerary have timing conflicts or late arrival warnings. Do you want to proceed anyway?</p>
+              <p className="text-neutral-500 mb-6 leading-relaxed">{t("time_warning_desc")}</p>
               <div className="flex items-center gap-3 w-full">
                 <button 
                   onClick={() => setShowTimeWarningPopup(false)} 
                   className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button 
                   onClick={() => { setShowTimeWarningPopup(false); setStep(6); }} 
                   className="flex-1 py-3 px-4 bg-black text-white font-medium rounded-md hover:bg-neutral-800 transition-colors"
                 >
-                  Proceed
+                  {t("proceed")}
                 </button>
               </div>
             </div>
@@ -1292,7 +1308,7 @@ export default function NewEventItinerary() {
         {editingStayTimeIdx !== null && (
           <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
             <div className="bg-white w-full max-w-xs rounded-2xl shadow-xl flex flex-col p-6">
-              <h2 className="font-bold text-xl mb-4 text-neutral-900 text-center">Edit Stay Time</h2>
+              <h2 className="font-bold text-xl mb-4 text-neutral-900 text-center">{t("edit_stay_time_title")}</h2>
               <div className="flex items-center gap-2 mb-6 justify-center">
                 <input 
                   type="number" 
@@ -1301,20 +1317,20 @@ export default function NewEventItinerary() {
                   onChange={(e) => setNewStayTimeMins(e.target.value)} 
                   className="w-24 border border-neutral-200 rounded-md py-2 px-3 text-center font-semibold focus:outline-none focus:border-black"
                 />
-                <span className="font-semibold text-neutral-500">mins</span>
+                <span className="font-semibold text-neutral-500">{t("mins")}</span>
               </div>
               <div className="flex items-center gap-3 w-full">
                 <button 
                   onClick={() => setEditingStayTimeIdx(null)} 
                   className="flex-1 py-3 px-4 bg-neutral-100 text-neutral-900 font-medium rounded-md hover:bg-neutral-200 transition-colors"
                 >
-                  Cancel
+                  {t("cancel")}
                 </button>
                 <button 
                   onClick={handleSaveStayTime} 
                   className="flex-1 py-3 px-4 bg-black text-white font-medium rounded-md hover:bg-neutral-800 transition-colors"
                 >
-                  Save
+                  {t("save")}
                 </button>
               </div>
             </div>
@@ -1331,8 +1347,8 @@ export default function NewEventItinerary() {
       <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mb-6 text-white">
         <CheckCircle2 size={32} />
       </div>
-      <h1 className="text-4xl font-extrabold tracking-tight mb-4">Tour Finalized!</h1>
-      <p className="text-lg text-neutral-500 font-light leading-relaxed mb-8">Give your tour a name to save it.</p>
+      <h1 className="text-4xl font-extrabold tracking-tight mb-4">{t("tour_finalized_title")}</h1>
+      <p className="text-lg text-neutral-500 font-light leading-relaxed mb-8">{t("give_tour_name_desc")}</p>
       <div className="w-full max-w-sm space-y-4">
         <input 
           type="text"
@@ -1345,16 +1361,8 @@ export default function NewEventItinerary() {
           onClick={handleSave}
           className="w-full py-3 bg-black text-white rounded-md font-medium text-lg hover:bg-neutral-800 transition-colors"
         >
-          Save and Finish
+          {t("save_and_finish")}
         </button>
-        
-        {/* Share functionality is temporarily disabled/hidden */}
-        {/* <button
-          onClick={() => {}}
-          className="w-full py-3 bg-white text-neutral-900 border border-neutral-200 rounded-md font-medium text-lg flex items-center justify-center gap-2 hover:bg-neutral-50 transition-colors"
-        >
-          <Share size={20} /> Export / Share
-        </button> */}
       </div>
     </div>
   );

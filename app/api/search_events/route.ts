@@ -17,16 +17,19 @@ function getAIClient() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { city, categories, monthFrom, monthTo } = await req.json();
+    const { city, categories, monthFrom, monthTo, response_value_language } = await req.json();
     const ai = getAIClient();
     
+    const lang = response_value_language === "vi" || response_value_language === "vietnamese" ? "Vietnamese" : "English";
+
     const systemInstruction = JSON.stringify({
       persona: "event researcher",
       task: `find upcoming events in ${city}, Vietnam`,
       response_type: "json",
+      response_value_language: lang,
       response_schema: [{
-        name: "event name",
-        description: "a brief description",
+        name: `event name (in ${lang})`,
+        description: `a brief description (in ${lang})`,
         participations: [
           {
             date: 1717200000000,
@@ -56,7 +59,8 @@ export async function POST(req: NextRequest) {
     const promptObj: any = {
       task: `find upcoming events in ${city}, Vietnam`,
       city: city,
-      categories: categories
+      categories: categories,
+      response_value_language: lang
     };
 
     if (monthFrom) {
