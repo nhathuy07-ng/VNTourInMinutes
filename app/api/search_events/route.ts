@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenAI, Type } from "@google/genai";
+import { EVENT_CATEGORIES } from "@/lib/event_categories";
 
 let aiClient: GoogleGenAI | null = null;
 function getAIClient() {
@@ -55,12 +56,32 @@ export async function POST(req: NextRequest) {
     const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // returns "YYYY-MM-DD"
     const minDateTs = new Date(`${vnDateStr}T00:00:00+07:00`).getTime();
 
+    const otherCategory = EVENT_CATEGORIES.find(c => c.phrase_id === "other" || c.id.toLowerCase() === "other");
+    const otherId = otherCategory?.id || "Other";
+    const isOtherSelected = Array.isArray(categories) && categories.some(
+      (c: string) => c === otherId || c.toLowerCase() === "other"
+    );
+    const nonOtherCategories = Array.isArray(categories)
+      ? categories.filter((c: string) => c !== otherId && c.toLowerCase() !== "other")
+      : [];
+    const remainingCategories = EVENT_CATEGORIES
+      .filter(c => c.phrase_id !== "other" && c.id.toLowerCase() !== "other")
+      .map(c => c.id);
+
     const promptObj: any = {
       task: `find upcoming events in ${city}, Vietnam`,
       city: city,
-      categories: categories,
+      suggested_minimum: 5,
       response_value_language: lang
     };
+
+    if (nonOtherCategories.length > 0) {
+      promptObj.categories = nonOtherCategories;
+    }
+
+    if (isOtherSelected) {
+      promptObj.exclude_categories = remainingCategories;
+    }
 
     if (monthFrom) {
       promptObj.from_month = monthFrom;

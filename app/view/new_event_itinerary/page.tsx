@@ -7,18 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Place, ItineraryItem, Itinerary } from "@/lib/types";
 import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
 import { useTranslation } from "@/lib/localization";
-
-const EVENT_CATEGORIES = [
-  { id: "Sports Events (Participate)", phrase_id: "category_sports_events_participate" },
-  { id: "Sports Matches (Spectate)", phrase_id: "category_sports_matches_spectate" },
-  { id: "Traditional / Folk Festivals", phrase_id: "category_traditional_folk_festivals" },
-  { id: "Culinary Fairs", phrase_id: "category_culinary_fairs" },
-  { id: "Live Cultural / Nighttime Shows", phrase_id: "category_live_cultural_nighttime_shows" },
-  { id: "Craft Workshops", phrase_id: "category_craft_workshops" },
-  { id: "Expos", phrase_id: "category_expos" },
-  { id: "Concerts", phrase_id: "category_concerts" },
-  { id: "Other", phrase_id: "category_other" }
-];
+import { EVENT_CATEGORIES } from "@/lib/event_categories";
 
 export interface EventParticipation {
   id: string; // assigned locally

@@ -553,43 +553,39 @@ export const localization: Record<string, LocalizationEntry> = {
   },
 
   // Event Categories
-  "category_sports_events_participate": {
+  "sports_events_can_participate": {
     en: "Sports Events (Participate)",
     vi: "Sự kiện thể thao (Tham gia)"
   },
-  "category_sports_matches_spectate": {
+  "sports_matches_for_spectators": {
     en: "Sports Matches (Spectate)",
     vi: "Trận đấu thể thao (Xem / Cổ vũ)"
   },
-  "category_sports_events": {
-    en: "Sports Events",
-    vi: "Sự kiện thể thao"
-  },
-  "category_traditional_folk_festivals": {
+  "traditional_folk_festivals": {
     en: "Traditional / Folk Festivals",
     vi: "Lễ hội truyền thống / Dân gian"
   },
-  "category_culinary_fairs": {
+  "culinary_fairs": {
     en: "Culinary Fairs",
     vi: "Hội chợ ẩm thực"
   },
-  "category_live_cultural_nighttime_shows": {
+  "live_cultural_nighttime_shows": {
     en: "Live Cultural / Nighttime Shows",
     vi: "Biểu diễn văn hóa / Show diễn đêm"
   },
-  "category_craft_workshops": {
+  "craft_workshops": {
     en: "Craft Workshops",
     vi: "Xưởng thủ công"
   },
-  "category_expos": {
+  "expos": {
     en: "Expos",
     vi: "Triển lãm"
   },
-  "category_concerts": {
+  "concerts": {
     en: "Concerts",
     vi: "Hòa nhạc"
   },
-  "category_other": {
+  "other": {
     en: "Other",
     vi: "Khác"
   },
