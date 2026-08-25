@@ -25,14 +25,14 @@ export async function POST(req: NextRequest) {
     const systemInstruction = JSON.stringify({
       persona: "event researcher",
       task: `find upcoming events in ${city}, Vietnam`,
-      response_type: "json",
+      response_type: "a json array (no markdown blocks, just the JSON string)",
       response_value_language: lang,
       response_schema: [{
-        name: `event name (in ${lang})`,
+        event_name: `event name (in ${lang})`,
         description: `a brief description (in ${lang})`,
         participations: [
           {
-            date: 1717200000000,
+            date: "YYYY-MM-DD (e.g. 2026-09-02 in GMT+7)",
             time_start: "19:00",
             time_end: "23:00",
             city: city,
@@ -42,8 +42,7 @@ export async function POST(req: NextRequest) {
       }],
       prioritize_sources: ["Vietnam National Tourism Authority", "official news sources"],
       CRITICAL_OUTPUT_NOTES: [
-        "No markdown blocks like ```json",
-        "'date' field in 'participations' use Unix timestamp in milliseconds representing event's day.",
+        "'date' field in 'participations' MUST be in 'YYYY-MM-DD' format representing the event date in GMT+7 (Vietnam time).",
         "'address_line' MUST return a specific, physical venue name, building, or street address. If an event is city-wide (like a festival), identify the main venue, opening ceremony location, or primary central gathering spot."
       ],
       BANNED_PHRASES: [
@@ -51,10 +50,10 @@ export async function POST(req: NextRequest) {
       ]
     });
 
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    tomorrow.setHours(0, 0, 0, 0);
-    const minDateTs = tomorrow.getTime();
+    // Get current date and midnight in GMT+7 (Vietnam time)
+    const now = new Date();
+    const vnDateStr = now.toLocaleDateString("en-CA", { timeZone: "Asia/Ho_Chi_Minh" }); // returns "YYYY-MM-DD"
+    const minDateTs = new Date(`${vnDateStr}T00:00:00+07:00`).getTime();
 
     const promptObj: any = {
       task: `find upcoming events in ${city}, Vietnam`,
@@ -70,7 +69,7 @@ export async function POST(req: NextRequest) {
       promptObj.to_month = monthTo;
     }
     if (!monthFrom && !monthTo) {
-      promptObj.from_date = tomorrow.toISOString().split('T')[0];
+      promptObj.from_date = vnDateStr;
     }
 
     const prompt = JSON.stringify(promptObj, null, 2);
@@ -101,16 +100,23 @@ export async function POST(req: NextRequest) {
     try {
       let parsedEvents = JSON.parse(jsonText);
       if (Array.isArray(parsedEvents)) {
-        if (minDateTs > 0) {
-          events = parsedEvents.map((evt: any) => {
-             if (evt.participations && Array.isArray(evt.participations)) {
-               evt.participations = evt.participations.filter((p: any) => p.date >= minDateTs);
-             }
-             return evt;
-          }).filter((evt: any) => evt.participations && evt.participations.length > 0);
-        } else {
-          events = parsedEvents;
-        }
+        events = parsedEvents.map((evt: any) => {
+          if (evt.participations && Array.isArray(evt.participations)) {
+            evt.participations = evt.participations.map((p: any) => {
+              if (typeof p.date === "string") {
+                const cleanDate = p.date.trim().split("T")[0];
+                const dateWithTz = `${cleanDate}T00:00:00+07:00`;
+                const ts = new Date(dateWithTz).getTime();
+                p.date = isNaN(ts) ? new Date(p.date).getTime() : ts;
+              }
+              return p;
+            });
+            if (minDateTs > 0) {
+              evt.participations = evt.participations.filter((p: any) => p.date >= minDateTs);
+            }
+          }
+          return evt;
+        }).filter((evt: any) => evt.participations && evt.participations.length > 0);
       }
     } catch (e) {
       console.error("Failed to parse events JSON", e);

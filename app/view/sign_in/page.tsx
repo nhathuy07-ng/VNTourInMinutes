@@ -1,16 +1,17 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "@/lib/store";
 import { auth, googleProvider } from "@/lib/firebase";
 import { signInWithPopup, onAuthStateChanged } from "firebase/auth";
 import { useRouter } from "next/navigation";
-import { MapPin } from "lucide-react";
+import { MapPin, Globe, Check } from "lucide-react";
 import { useTranslation } from "@/lib/localization";
 
 export default function SignIn() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, language, setLanguage } = useTranslation();
+  const [isLangOpen, setIsLangOpen] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (user) => {
@@ -36,7 +37,53 @@ export default function SignIn() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-white text-neutral-900">
+    <div className="min-h-screen flex flex-col justify-between p-6 bg-white text-neutral-900 relative">
+      {/* Top Bar Language Switcher */}
+      <div className="w-full flex justify-end relative z-20">
+        <div className="relative">
+          <button
+            onClick={() => setIsLangOpen(!isLangOpen)}
+            className="min-h-[44px] min-w-[44px] p-2 flex items-center justify-center gap-1.5 text-neutral-800 hover:text-black hover:bg-neutral-100 border border-neutral-200 rounded-md transition-colors"
+            aria-label={t("language")}
+          >
+            <Globe size={20} />
+            <span className="text-xs font-semibold uppercase">{language}</span>
+          </button>
+
+          {isLangOpen && (
+            <>
+              <div
+                className="fixed inset-0 z-20"
+                onClick={() => setIsLangOpen(false)}
+              />
+              <div className="absolute right-0 top-12 w-44 bg-white border border-neutral-200 rounded-xl p-1.5 z-30 flex flex-col gap-1">
+                <button
+                  onClick={() => {
+                    setLanguage("en");
+                    setIsLangOpen(false);
+                  }}
+                  className="min-h-[44px] w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg text-left text-sm font-medium transition-colors"
+                >
+                  <span>English</span>
+                  {language === "en" && <Check size={16} className="text-black" />}
+                </button>
+
+                <button
+                  onClick={() => {
+                    setLanguage("vi");
+                    setIsLangOpen(false);
+                  }}
+                  className="min-h-[44px] w-full flex items-center justify-between px-3 py-2 hover:bg-neutral-100 active:bg-neutral-200 rounded-lg text-left text-sm font-medium transition-colors"
+                >
+                  <span>Tiếng Việt</span>
+                  {language === "vi" && <Check size={16} className="text-black" />}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
       <div className="flex-1 flex flex-col items-center justify-center space-y-6 text-center max-w-sm mx-auto w-full">
         <div className="w-16 h-16 bg-black rounded-lg flex items-center justify-center mb-4">
           <MapPin size={32} className="text-white" />
@@ -49,7 +96,7 @@ export default function SignIn() {
         
         <button
           onClick={handleSignIn}
-          className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-3"
+          className="w-full py-3 px-6 bg-black text-white rounded-md font-medium text-lg hover:bg-neutral-800 transition-colors flex items-center justify-center gap-3 min-h-[44px]"
         >
           <svg className="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
             <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
@@ -62,11 +109,13 @@ export default function SignIn() {
 
         <button
           onClick={handleGuest}
-          className="w-full py-3 px-6 bg-white text-neutral-900 border border-neutral-200 rounded-md font-medium text-lg hover:bg-neutral-50 transition-colors"
+          className="w-full py-3 px-6 bg-white text-neutral-900 border border-neutral-200 rounded-md font-medium text-lg hover:bg-neutral-50 transition-colors min-h-[44px]"
         >
           {t("continue_as_guest")}
         </button>
       </div>
+
+      <div className="h-6" />
     </div>
   );
 }

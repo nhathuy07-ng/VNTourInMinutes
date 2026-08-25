@@ -553,6 +553,14 @@ export const localization: Record<string, LocalizationEntry> = {
   },
 
   // Event Categories
+  "category_sports_events_participate": {
+    en: "Sports Events (Participate)",
+    vi: "Sự kiện thể thao (Tham gia)"
+  },
+  "category_sports_matches_spectate": {
+    en: "Sports Matches (Spectate)",
+    vi: "Trận đấu thể thao (Xem / Cổ vũ)"
+  },
   "category_sports_events": {
     en: "Sports Events",
     vi: "Sự kiện thể thao"

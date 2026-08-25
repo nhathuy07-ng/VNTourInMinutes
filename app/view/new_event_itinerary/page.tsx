@@ -9,7 +9,8 @@ import { VIETNAM_CITIES, GENERIC_PLACE_TYPES } from "@/lib/cities";
 import { useTranslation } from "@/lib/localization";
 
 const EVENT_CATEGORIES = [
-  { id: "Sports Events", phrase_id: "category_sports_events" },
+  { id: "Sports Events (Participate)", phrase_id: "category_sports_events_participate" },
+  { id: "Sports Matches (Spectate)", phrase_id: "category_sports_matches_spectate" },
   { id: "Traditional / Folk Festivals", phrase_id: "category_traditional_folk_festivals" },
   { id: "Culinary Fairs", phrase_id: "category_culinary_fairs" },
   { id: "Live Cultural / Nighttime Shows", phrase_id: "category_live_cultural_nighttime_shows" },
@@ -30,7 +31,8 @@ export interface EventParticipation {
 
 export interface EventItem {
   id: string;
-  name: string;
+  event_name: string;
+  name?: string;
   description: string;
   participations: EventParticipation[];
 }
@@ -138,6 +140,8 @@ export default function NewEventItinerary() {
       setEvents(loadedEvents.map((e: any, i: number) => ({ 
         ...e, 
         id: `evt-${i}`,
+        event_name: e.event_name || e.name || "",
+        name: e.event_name || e.name || "",
         participations: (e.participations || []).map((p: any, j: number) => ({
           ...p,
           id: `evt-${i}-part-${j}`
@@ -203,7 +207,7 @@ export default function NewEventItinerary() {
       
       return {
         local_id: pid,
-        name: evt.name,
+        name: evt.event_name || evt.name || "",
         maps_place_id: "",
         maps_coords: "",
         address: `${part.address_line}, ${part.city}`,
@@ -715,7 +719,7 @@ export default function NewEventItinerary() {
                 <div className="flex gap-4">
                   <div className="flex-1">
                     <h3 className="font-bold text-xl text-neutral-900 leading-tight mb-2">
-                      {event.name}
+                      {event.event_name || event.name}
                     </h3>
                     <p className="text-sm text-neutral-600 leading-relaxed mb-4 line-clamp-3">
                       {event.description}
