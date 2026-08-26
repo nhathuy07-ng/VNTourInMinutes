@@ -448,26 +448,44 @@ export default function NewEventItinerary() {
     
     if (item.category !== "Event") {
       if (is24Hours) return null;
-      if (!match) return null;
-      const [_, open, close] = match;
+      
+      const ranges = item.opening_time.split(",");
       const parseTime = (t: string) => {
         const [h, m] = t.split(':').map(Number);
-        return h * 60 + m;
+        return (h || 0) * 60 + (m || 0);
       };
-      let openMins = parseTime(open);
-      let closeMins = parseTime(close);
-      if (closeMins < openMins) closeMins += 24 * 60;
 
       let startMins = new Date(item.start_time).getHours() * 60 + new Date(item.start_time).getMinutes();
       let endMins = new Date(item.end_time).getHours() * 60 + new Date(item.end_time).getMinutes();
-      
       if (endMins < startMins) endMins += 24 * 60;
-      if (startMins < openMins) {
-        startMins += 24 * 60;
-        endMins += 24 * 60;
+
+      let hasValidRange = false;
+      let fitsInAny = false;
+
+      for (const range of ranges) {
+        const match = range.trim().match(/(\d{1,2}:\d{2})\s*-\s*(\d{1,2}:\d{2})/);
+        if (!match) continue;
+        hasValidRange = true;
+
+        const [_, open, close] = match;
+        let openMins = parseTime(open);
+        let closeMins = parseTime(close);
+        if (closeMins < openMins) closeMins += 24 * 60;
+
+        let s = startMins;
+        let e = endMins;
+        if (s < openMins) {
+          s += 24 * 60;
+          e += 24 * 60;
+        }
+
+        if (s >= openMins && e <= closeMins) {
+          fitsInAny = true;
+          break;
+        }
       }
 
-      if (startMins < openMins || endMins > closeMins) {
+      if (hasValidRange && !fitsInAny) {
         return { isWarning: true, msg: `${t("warning_outside_opening_hours")} (${item.opening_time})` };
       }
       return null;
